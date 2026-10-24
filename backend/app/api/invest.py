@@ -1,53 +1,57 @@
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, status
+from sqlalchemy.orm import Session
 from typing import List, Optional
+
+from app.core.database import get_db
+from app.models.invest_project import InvestProject
 from app.schemas.invest import InvestProjectOut
+from app.core.security import get_current_user
 
 router = APIRouter(prefix="/invest", tags=["Invest Navigator"])
 
-MOCK_PROJECTS = [
-    {
-        "id": 1,
-        "title": "Строительство логистического технопарка 'Запад'",
-        "investor": "ЛогоПром Инвест",
-        "industry": "Логистика",
-        "stage": "стройка",
-        "budget": 2500000000.0,
-        "lat": 55.680000,
-        "lon": 37.350000,
-        "target_needs": ["fiber_optics", "cctv", "data_center"],
-        "event_date": "2025-06-30",
-        "description": "Крупный складской хаб класса А, требуется СКС, магистральная оптика и 120 камер."
-    },
-    {
-        "id": 2,
-        "title": "Модернизация элеваторного комплекса",
-        "investor": "АгроСевер Холдинг",
-        "industry": "АПК",
-        "stage": "проектирование",
-        "budget": 850000000.0,
-        "lat": 55.910000,
-        "lon": 37.580000,
-        "target_needs": ["telephony", "fiber_optics", "access_control"],
-        "event_date": "2025-09-15",
-        "description": "Автоматизация взвешивания зерна, видеонаблюдение с аналитикой."
-    }
-]
-
-@router.get("/projects", response_model=List[InvestProjectOut], summary="Список инвестпроектов")
-def get_projects(
-    stage: Optional[str] = Query(None, description="проектирование, стройка, запуск"),
-    industry: Optional[str] = Query(None, description="Отрасль проекта")
+@router.get(
+    "/projects",
+    response_model=List[InvestProjectOut],
+    summary="Реестр инвестпроектов и строек с таймлайном"
+)
+def get_invest_projects(
+    stage: Optional[str] = Query(None, description="Стадия: проектирование, стройка, ввод в эксплуатацию"),
+    industry: Optional[str] = Query(None, description="Отрасль проекта"),
+    needs: Optional[str] = Query(None, description="Потребность (например: fiber_optics, cctv)"),
+    date_from: Optional[str] = Query(None, description="Начальная дата (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="Конечная дата (YYYY-MM-DD)"),
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
 ):
-    results = MOCK_PROJECTS
-    if stage:
-        results = [p for p in results if p["stage"].lower() == stage.lower()]
-    if industry:
-        results = [p for p in results if p["industry"].lower() == industry.lower()]
-    return results
+    query = db.query(InvestProject)
 
-@router.get("/projects/{project_id}", response_model=InvestProjectOut, summary="Детальная карточка проекта")
-def get_project_by_id(project_id: int):
-    for p in MOCK_PROJECTS:
-        if p["id"] == project_id:
-            return p
-    raise HTTPException(status_code=404, detail="Инвестпроект не найден")
+    if stage:
+        query = query.filter(InvestProject.stage.ilike(f"%{stage}%"))
+    if industry:
+        query = query.filter(InvestProject.industry.ilike(f"%{industry}%"))
+    if needs:
+        query = query.filter(InvestProject.target_needs.ilike(f"%{needs}%"))
+    if date_from:
+        query = query.filter(InvestProject.event_date >= date_from)
+    if date_to:
+        query = query.filter(InvestProject.event_date <= date_to)
+
+    return query.all()
+
+@router.get(
+    "/projects/{project_id}",
+    response_model=InvestProjectOut,
+    summary="Карточка инвестпроекта (для перехода в Калькулятор)"
+)
+def get_invest_project(
+    project_id: int,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
+):
+    project = db.query(InvestProject).filter(InvestProject.id == project_id).first()
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Инвестпроект с ID {project_id} не найден"
+        )
+    return project
