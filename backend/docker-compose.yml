@@ -1,2 +1,13 @@
 services:
-  
+  backend:
+    build: .
+    container_name: rtk_backend
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data.db:/app/data.db
+      - ./data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:///./data.db
+      - PYTHONUNBUFFERED=1
