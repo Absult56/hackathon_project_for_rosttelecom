@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
+from fastapi import Response
+from app.services.export_service import render_kp_docx
 
 from app.core.database import get_db
 from app.models.invest_project import InvestProject
@@ -20,7 +22,6 @@ router = APIRouter(prefix="/calculator", tags=["Deal Calculator"])
 def calculate_deal(
     data: CalculateRequest,
     db: Session = Depends(get_db),
-    user: dict = Depends(get_current_user)
 ):
     target_industry = "IT"
 
@@ -80,4 +81,60 @@ def calculate_deal(
         margin_rub=calc_result["margin_rub"],
         margin_percent=calc_result["margin_percent"],
         benchmarks=benchmark_list
+    )
+
+@router.post(
+    "/export-docx",
+    summary="Автоматическая генерация коммерческого предложения (КП) в формате .docx"
+)
+def export_proposal_docx(
+        data: CalculateRequest,
+        db: Session = Depends(get_db),
+):
+    # Автоподтягивание данных по компании или инвестпроекту
+    client_name = "Потенциальный партнер"
+    inn = "7700000000"
+    project_title = "Комплексная цифровизация объекта"
+
+    if data.project_id:
+        project = db.query(InvestProject).filter(InvestProject.id == data.project_id).first()
+        if project:
+            client_name = project.investor
+            project_title = project.title
+
+    if data.company_id:
+        company = db.query(Company).filter(Company.id == data.company_id).first()
+        if company:
+            client_name = company.name
+            inn = company.inn
+
+    # Расчет сметы
+    calc = compute_deal_estimate(
+        scale_param=data.scale_param,
+        work_types=data.work_types,
+        urgency_coeff=data.urgency_coeff,
+        region_coeff=data.region_coeff
+    )
+
+    docx_stream = render_kp_docx(
+        client_name=client_name,
+        inn=inn,
+        project_title=project_title,
+        cost_price=calc["cost_price"],
+        optimal_price=calc["optimal_price"],
+        min_price=calc["min_price"],
+        margin_percent=calc["margin_percent"],
+        work_types=data.work_types
+    )
+
+    doc_id = data.project_id or data.company_id or "deal"
+    filename = f"KP_Rostelecom_{doc_id}.docx"
+
+    return Response(
+        content=docx_stream.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Access-Control-Expose-Headers": "Content-Disposition"
+        }
     )
