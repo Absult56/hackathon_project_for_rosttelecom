@@ -18,3 +18,7 @@ npm-debug.log*
 .vscode/
 .DS_Store
 Thumbs.db
+
+leads_export.csv
+*.docx
+!kp_template.docx
