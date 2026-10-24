@@ -30,12 +30,8 @@ def seed_database(db: Session):
     projects = [InvestProject(**item) for item in payload.get("projects", [])]
     db.add_all(projects)
 
-    # 3. Дефолтные ретро-сделки для калькулятора
-    benchmarks = [
-        BenchmarkDeal(title="Офис Альфа 500 кв.м", industry="Финансы", scale=500.0, final_price=1200000.0, margin=30.0),
-        BenchmarkDeal(title="Складской комплекс 3000 кв.м", industry="Логистика", scale=3000.0, final_price=4800000.0, margin=25.5),
-        BenchmarkDeal(title="Агроферма Вологда 1500 кв.м", industry="АПК", scale=1500.0, final_price=2300000.0, margin=22.0),
-    ]
+    # 3. Загрузка сделок-бенчмарок из фикстур Data Engineer
+    benchmarks = [BenchmarkDeal(**item) for item in payload.get("benchmarks", [])]
     db.add_all(benchmarks)
 
     db.commit()
