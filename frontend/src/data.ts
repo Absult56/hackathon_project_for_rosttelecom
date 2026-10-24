@@ -9,6 +9,7 @@ export type Company = {
   lon: number
   address: string
   client: boolean
+  revenueEstimated?: boolean
   whiteSpot?: boolean
   zone: string
 }
@@ -30,8 +31,8 @@ export type InvestProject = {
 export const industries = ['АПК', 'Торговля', 'Производство', 'ТЭК', 'IT', 'Логистика', 'Финансы']
 
 const initialCompanies: Company[] = [
-  { id: 1, name: 'Донские элеваторы', inn: '6164001122', industry: 'АПК', revenue: 145.2, growth: 12.4, lat: 47.2225, lon: 39.7187, address: 'Ростов-на-Дону, ул. Береговая, 8', client: false, zone: 'Центр' },
-  { id: 2, name: 'Ростовский порт', inn: '6167012405', industry: 'Торговля', revenue: 820.4, growth: 8.1, lat: 47.2061, lon: 39.7342, address: 'Ростов-на-Дону, ул. Береговая, 30', client: true, zone: 'Порт' },
+  { id: 1, name: 'Донские элеваторы', inn: '6164001122', industry: 'АПК', revenue: 145.2, growth: 12.4, lat: 47.2225, lon: 39.7187, address: 'Ростов-на-Дону, ул. Береговая, 8', client: false, revenueEstimated: true, zone: 'Центр' },
+  { id: 2, name: 'Ростовский порт', inn: '6167012405', industry: 'Торговля', revenue: 820.4, growth: 8.1, lat: 47.2061, lon: 39.7342, address: 'Ростов-на-Дону, ул. Береговая, 30', client: true, revenueEstimated: true, zone: 'Порт' },
   { id: 3, name: 'Южная аграрная компания', inn: '6168057721', industry: 'АПК', revenue: 268.7, growth: 16.8, lat: 47.2572, lon: 39.6991, address: 'Ростов-на-Дону, пр. Михаила Нагибина, 14', client: false, zone: 'Север' },
   { id: 4, name: 'Технопарк «Старт»', inn: '6163120087', industry: 'IT', revenue: 96.3, growth: 22.1, lat: 47.2314, lon: 39.7018, address: 'Ростов-на-Дону, ул. Социалистическая, 74', client: false, zone: 'Центр' },
   { id: 5, name: 'Донской металлоцентр', inn: '6165129130', industry: 'Производство', revenue: 540.1, growth: -2.6, lat: 47.1908, lon: 39.6552, address: 'Ростов-на-Дону, ул. Доватора, 148', client: true, zone: 'Запад' },
@@ -65,6 +66,7 @@ const generatedCompanies: Company[] = Array.from({ length: 96 }, (_, index) => {
     lon: 39.57 + (Math.floor(index / 15) % 12) * 0.026,
     address: `Ростовская область, демо-адрес ${index + 1}`,
     client: !['Батайск', 'Новый Аксай'].includes(zone) && index % 7 === 0,
+    revenueEstimated: true,
     whiteSpot: ['Батайск', 'Новый Аксай'].includes(zone),
     zone,
   }

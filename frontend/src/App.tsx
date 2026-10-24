@@ -20,13 +20,28 @@ import { companies as demoCompanies, formatMoney, industries, projects as demoPr
 import { calculateDeal, exportCompaniesCsv, generateProposalDoc, loadCompanies, loadProjects, request2FACode, verify2FA, type DealEstimate } from './services/api'
 
 type Module = 'radar' | 'invest' | 'calculator'
-type MapPoint = { id: number; name: string; lat: number; lon: number; color: string; detail: string; weight?: number }
+type MapPoint = { id: number; name: string; lat: number; lon: number; color: string; detail: string; weight?: number; whiteSpot?: boolean }
 
 const initialToken = () => window.localStorage.getItem('rtk-demo-token')
+const isInRostovRegion = (lat: number, lon: number) => lat >= 45.8 && lat <= 49.0 && lon >= 38.2 && lon <= 45.2
 
 function MapViewport({ center }: { center: [number, number] }) {
   const map = useMap()
-  useEffect(() => { map.flyTo(center, map.getZoom(), { duration: 0.55 }) }, [center, map])
+  useEffect(() => {
+    const next = L.latLng(center[0], center[1])
+    if (map.getCenter().distanceTo(next) > 100) map.flyTo(next, map.getZoom(), { duration: 0.55 })
+  }, [center[0], center[1], map])
+  return null
+}
+
+function MapZoomWatcher({ onZoomChange }: { onZoomChange: (zoom: number) => void }) {
+  const map = useMap()
+  useEffect(() => {
+    const updateZoom = () => onZoomChange(map.getZoom())
+    updateZoom()
+    map.on('zoomend', updateZoom)
+    return () => { map.off('zoomend', updateZoom) }
+  }, [map, onZoomChange])
   return null
 }
 
@@ -45,44 +60,49 @@ function HeatLayer({ points, enabled }: { points: MapPoint[]; enabled: boolean }
   return null
 }
 
-function GeoMap({ points, selectedId, center, onSelect, heatmap = false }: {
-  points: MapPoint[]; selectedId: number; center: [number, number]; onSelect: (id: number) => void; heatmap?: boolean
+function GeoMap({ points, selectedId, center, onSelect, heatmap = false, clusterAtZoom = 13 }: {
+  points: MapPoint[]; selectedId: number; center: [number, number]; onSelect: (id: number) => void; heatmap?: boolean; clusterAtZoom?: number
 }) {
+  const [zoom, setZoom] = useState(12)
   return (
-    <MapContainer center={center} zoom={12} scrollWheelZoom className="leaflet-map">
-      <MapViewport center={center} />
-      <HeatLayer points={points} enabled={heatmap} />
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      <MarkerClusterGroup
-        chunkedLoading
-        showCoverageOnHover={false}
-        maxClusterRadius={42}
-        iconCreateFunction={(cluster: { getChildCount: () => number }) => L.divIcon({
-          html: `<span>${cluster.getChildCount()}</span>`,
-          className: 'company-cluster',
-          iconSize: L.point(34, 34),
-        })}
-      >
-        {points.map((point) => (
-          <Marker
-            key={point.id}
-            position={[point.lat, point.lon]}
-            icon={L.divIcon({
-              html: `<span class="company-marker${point.id === selectedId ? ' selected' : ''}" style="--marker-color:${point.color}"></span>`,
-              className: 'company-marker-icon',
-              iconSize: [24, 24],
-              iconAnchor: [12, 12],
-            })}
-            eventHandlers={{ click: () => onSelect(point.id) }}
-          >
-            <Popup><strong>{point.name}</strong><br />{point.detail}</Popup>
-          </Marker>
-        ))}
-      </MarkerClusterGroup>
-    </MapContainer>
+    <>
+      <MapContainer center={center} zoom={12} scrollWheelZoom className="leaflet-map">
+        <MapViewport center={center} />
+        <MapZoomWatcher onZoomChange={setZoom} />
+        <HeatLayer points={points} enabled={heatmap && zoom < clusterAtZoom} />
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        {zoom >= clusterAtZoom && <MarkerClusterGroup
+          chunkedLoading
+          showCoverageOnHover={false}
+          maxClusterRadius={42}
+          iconCreateFunction={(cluster: { getChildCount: () => number }) => L.divIcon({
+            html: `<span>${cluster.getChildCount()}</span>`,
+            className: 'company-cluster',
+            iconSize: L.point(34, 34),
+          })}
+        >
+          {points.map((point) => (
+            <Marker
+              key={point.id}
+              position={[point.lat, point.lon]}
+              icon={L.divIcon({
+                html: `<span class="company-marker${point.id === selectedId ? ' selected' : ''}${point.whiteSpot ? ' white-spot' : ''}" style="--marker-color:${point.color}"></span>`,
+                className: 'company-marker-icon',
+                iconSize: [24, 24],
+                iconAnchor: [12, 12],
+              })}
+              eventHandlers={{ click: () => onSelect(point.id) }}
+            >
+              <Popup><strong>{point.name}</strong><br />{point.detail}</Popup>
+            </Marker>
+          ))}
+        </MarkerClusterGroup>}
+      </MapContainer>
+      <span className="map-mode-label">{zoom < clusterAtZoom ? heatmap ? 'Плотность рынка' : 'Тепловой слой выключен' : 'Компании · кластеры'}</span>
+    </>
   )
 }
 
@@ -190,10 +210,10 @@ function Metric({ label, value, note, icon: Icon, accent = '' }: { label: string
 function CompanyCard({ company, onEstimate }: { company: Company; onEstimate: (company: Company) => void }) {
   return (
     <section className="selection-card">
-      <div className="selection-top"><span className="eyebrow">ВЫБРАННАЯ КОМПАНИЯ</span><span className={`status-pill ${company.client ? 'client' : 'lead'}`}><i />{company.client ? 'Клиент' : 'Потенциал'}</span></div>
+      <div className="selection-top"><span className="eyebrow">ВЫБРАННАЯ КОМПАНИЯ</span></div>
       <h3>{company.name}</h3>
       <span className="company-industry">{company.industry} <span>·</span> ИНН {company.inn}</span>
-      <div className="company-revenue"><span>Выручка за год</span><strong>{formatMoney(company.revenue)}<small> млн ₽</small></strong></div>
+      <div className="company-revenue"><span>Выручка за год <small className="estimate-label">оценка</small></span><strong>{formatMoney(company.revenue)}<small> млн ₽</small></strong></div>
       <div className={`growth ${company.growth < 0 ? 'negative' : ''}`}>{company.growth < 0 ? <TrendingDown size={15} /> : <TrendingUp size={15} />}{company.growth > 0 ? '+' : ''}{company.growth}% <span>динамика</span></div>
       <div className="company-address"><MapPin size={14} />{company.address}</div>
       <button className="text-action" onClick={() => onEstimate(company)}>Оценить проект <ArrowRight size={15} /></button>
@@ -201,18 +221,19 @@ function CompanyCard({ company, onEstimate }: { company: Company; onEstimate: (c
   )
 }
 
-function Radar({ data, region, onEstimate }: { data: Company[]; region: string; onEstimate: (company: Company) => void }) {
+function Radar({ data, region, allowServerExport, onEstimate }: { data: Company[]; region: string; allowServerExport: boolean; onEstimate: (company: Company) => void }) {
   const [query, setQuery] = useState('')
   const [industry, setIndustry] = useState('Все отрасли')
   const [minRevenue, setMinRevenue] = useState(0)
-  const [onlyLeads, setOnlyLeads] = useState(false)
+  const [maxRevenue, setMaxRevenue] = useState('')
   const [whiteSpots, setWhiteSpots] = useState(true)
   const [heatmap, setHeatmap] = useState(true)
   const [selectedId, setSelectedId] = useState(1)
   const filtered = useMemo(() => data.filter((company) => {
     const matchesQuery = `${company.name} ${company.inn}`.toLowerCase().includes(query.toLowerCase())
-    return matchesQuery && (industry === 'Все отрасли' || company.industry === industry) && company.revenue >= minRevenue && (!onlyLeads || !company.client)
-  }), [data, query, industry, minRevenue, onlyLeads])
+    const belowMax = maxRevenue === '' || company.revenue <= Number(maxRevenue)
+    return matchesQuery && (industry === 'Все отрасли' || company.industry === industry) && company.revenue >= minRevenue && belowMax
+  }), [data, query, industry, minRevenue, maxRevenue])
   const selected = filtered.find((company) => company.id === selectedId) ?? filtered[0]
   const whiteSpotZones = useMemo(() => {
     const totals = new Map<string, { revenue: number; clients: number; markedSpot: boolean }>()
@@ -227,20 +248,20 @@ function Radar({ data, region, onEstimate }: { data: Company[]; region: string; 
   }, [data])
   const points = filtered.map((company) => ({
     id: company.id, name: company.name, lat: company.lat, lon: company.lon,
-    color: whiteSpots && whiteSpotZones.has(company.zone) ? '#ff5a36' : company.client ? '#6a24d9' : '#828a9b',
+    color: '#7028d8',
     detail: company.industry,
     weight: company.revenue,
+    whiteSpot: whiteSpots && (whiteSpotZones.has(company.zone) || Boolean(company.whiteSpot)),
   }))
-  const potentialRevenue = filtered.filter((company) => !company.client).reduce((sum, company) => sum + company.revenue, 0)
+  const estimatedRevenue = filtered.reduce((sum, company) => sum + company.revenue, 0)
 
   async function exportCsv() {
-    const canExportServerSelection = !query && minRevenue === 0
+    const canExportServerSelection = allowServerExport && !query && minRevenue === 0 && !maxRevenue
     const serverFile = canExportServerSelection ? await exportCompaniesCsv({
       ...(industry !== 'Все отрасли' ? { industry } : {}),
-      ...(onlyLeads ? { is_rtk_client: false } : {}),
     }) : null
-    const header = ['Название', 'ИНН', 'Отрасль', 'Выручка, млн руб.', 'Рост, %', 'Статус', 'Адрес']
-    const rows = filtered.map((company) => [company.name, company.inn, company.industry, company.revenue, company.growth, company.client ? 'Клиент' : 'Потенциал', company.address])
+    const header = ['Название', 'ИНН', 'Отрасль', 'Оценочная выручка, млн руб.', 'Рост, %', 'Адрес']
+    const rows = filtered.map((company) => [company.name, company.inn, company.industry, company.revenue, company.growth, company.address])
     const csv = [header, ...rows].map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(';')).join('\n')
     const url = URL.createObjectURL(serverFile ?? new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }))
     const link = Object.assign(document.createElement('a'), { href: url, download: 'rtk-leads-export.csv' })
@@ -253,19 +274,16 @@ function Radar({ data, region, onEstimate }: { data: Company[]; region: string; 
       <PageHeading kicker="МОДУЛЬ 01 · РЫНОК И ПОКРЫТИЕ" title="Радар присутствия" detail="Найдите компании с потенциалом роста и оцените покрытие региона." action={<button className="button button-outline" onClick={exportCsv}><ArrowDownToLine size={16} /> Экспорт CSV <span className="button-count">{filtered.length}</span></button>} />
       <div className="metric-row">
         <Metric label="Компаний в выборке" value={String(filtered.length).padStart(2, '0')} note="в текущем срезе" icon={Building2} />
-        <Metric label="Потенциальная выручка" value={`${formatMoney(potentialRevenue)} млн`} note="у компаний без контракта" icon={Wallet} accent="orange" />
+        <Metric label="Оценочная выручка" value={`${formatMoney(estimatedRevenue)} млн`} note="в текущей выборке" icon={Wallet} accent="orange" />
         <Metric label="Белые пятна" value={String(whiteSpotZones.size).padStart(2, '0')} note="зоны высокой активности" icon={MapPin} accent="green" />
         <Metric label="Динамика рынка" value="+14,8%" note="год к году · выборка" icon={TrendingUp} accent="blue" />
       </div>
       <div className="radar-layout">
         <aside className="filter-panel">
-          <div className="panel-heading"><div><SlidersHorizontal size={17} /><strong>Фильтры</strong></div><button className="clear-button" onClick={() => { setQuery(''); setIndustry('Все отрасли'); setMinRevenue(0); setOnlyLeads(false) }}>Сбросить</button></div>
+          <div className="panel-heading"><div><SlidersHorizontal size={17} /><strong>Фильтры</strong></div><button className="clear-button" onClick={() => { setQuery(''); setIndustry('Все отрасли'); setMinRevenue(0); setMaxRevenue('') }}>Сбросить</button></div>
           <label className="search-field"><Search size={16} /><input placeholder="Компания или ИНН" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
           <label className="field-label">Отрасль<select value={industry} onChange={(event) => setIndustry(event.target.value)}><option>Все отрасли</option>{industries.map((item) => <option key={item}>{item}</option>)}</select><ChevronDown size={14} /></label>
-          <div className="range-label"><label htmlFor="revenue">Минимальная выручка</label><strong>{minRevenue} млн ₽</strong></div>
-          <input id="revenue" className="range-input" type="range" min="0" max="1000" step="25" value={minRevenue} onChange={(event) => setMinRevenue(Number(event.target.value))} />
-          <div className="range-scale"><span>0</span><span>1 млрд ₽</span></div>
-          <label className="check-row"><input type="checkbox" checked={onlyLeads} onChange={(event) => setOnlyLeads(event.target.checked)} /><span className="custom-check"><Check size={12} /></span><span>Только потенциальные</span></label>
+          <div className="revenue-range"><span>Выручка, млн ₽ <small>оценка</small></span><div className="revenue-range-inputs"><label>от<input type="number" min="0" value={minRevenue || ''} placeholder="0" onChange={(event) => setMinRevenue(Math.max(0, Number(event.target.value) || 0))} /></label><label>до<input type="number" min={minRevenue} value={maxRevenue} placeholder="без лимита" onChange={(event) => setMaxRevenue(event.target.value)} /></label></div></div>
           <label className="check-row white-toggle"><input type="checkbox" checked={whiteSpots} onChange={(event) => setWhiteSpots(event.target.checked)} /><span className="custom-check"><Check size={12} /></span><span>Подсветить белые пятна</span><span className="orange-dot" /></label>
           <label className="check-row heat-toggle"><input type="checkbox" checked={heatmap} onChange={(event) => setHeatmap(event.target.checked)} /><span className="custom-check"><Check size={12} /></span><span>Тепловой слой выручки</span><span className="heat-dot" /></label>
           <div className="filter-foot"><Filter size={14} /> Обновлено сегодня, 09:42</div>
@@ -273,14 +291,14 @@ function Radar({ data, region, onEstimate }: { data: Company[]; region: string; 
         <section className="map-panel">
           <div className="map-head"><div><strong>{region}</strong><span><span className="map-live" /> {data === demoCompanies ? 'Демо-данные' : 'Данные API'} · {filtered.length} компаний</span></div><button className="map-expand" title="Карта интерактивна" aria-label="Интерактивная карта"><MapPin size={17} /></button></div>
           <div className="map-canvas"><GeoMap points={points} selectedId={selected?.id ?? -1} center={selected ? [selected.lat, selected.lon] : [47.2225, 39.7187]} onSelect={setSelectedId} heatmap={heatmap} />
-            <div className="map-legend"><span><i className="legend-client" /> Клиенты</span><span><i className="legend-lead" /> Потенциал</span>{whiteSpots && <span><i className="legend-white" /> Белые пятна</span>}</div>
+            <div className="map-legend">{whiteSpots && <span><i className="legend-white" /> Белые пятна</span>}<span><i className="legend-density" /> Плотность выручки</span></div>
             <div className="map-scale">OpenStreetMap</div>
           </div>
           <div className="map-foot"><span><BadgeCheck size={14} /> Зоны рассчитаны по плотности лидов и выручке</span><span>{data === demoCompanies ? 'Схематичные демо-данные' : 'Источник: реестр компаний API'}</span></div>
         </section>
         {selected ? <CompanyCard company={selected} onEstimate={onEstimate} /> : <div className="selection-card empty-selection"><Search size={22} /><strong>Ничего не найдено</strong><span>Измените фильтры, чтобы увидеть компании.</span></div>}
       </div>
-      <div className="result-strip"><span>КОМПАНИИ В ЗОНЕ</span><div className="result-pills">{filtered.slice(0, 5).map((company) => <button key={company.id} className={company.id === selected?.id ? 'selected' : ''} onClick={() => setSelectedId(company.id)}><i className={company.client ? 'client-dot' : 'lead-dot'} />{company.name}</button>)}</div><span className="result-more">{filtered.length > 5 ? `+ ещё ${filtered.length - 5}` : 'Все результаты'}</span></div>
+      <div className="result-strip"><span>КОМПАНИИ В ЗОНЕ</span><div className="result-pills">{filtered.slice(0, 5).map((company) => <button key={company.id} className={company.id === selected?.id ? 'selected' : ''} onClick={() => setSelectedId(company.id)}>{company.name}</button>)}</div><span className="result-more">{filtered.length > 5 ? `+ ещё ${filtered.length - 5}` : 'Все результаты'}</span></div>
     </>
   )
 }
@@ -317,7 +335,7 @@ function Investment({ data, region, onEstimate }: { data: InvestProject[]; regio
         </section>
         <section className="invest-map-panel">
           <div className="map-head"><div><strong>Объекты региона</strong><span>Выберите событие для перехода к объекту</span></div><span className="map-live" /></div>
-          <div className="invest-map"><GeoMap points={points} selectedId={selected?.id ?? -1} center={selected ? [selected.lat, selected.lon] : [47.2225, 39.7187]} onSelect={setSelectedId} /></div>
+          <div className="invest-map"><GeoMap points={points} selectedId={selected?.id ?? -1} center={selected ? [selected.lat, selected.lon] : [47.2225, 39.7187]} onSelect={setSelectedId} clusterAtZoom={12} /></div>
           {selected ? <div className="project-detail"><div><span className="eyebrow">{selected.investor} · {selected.stage.toUpperCase()}</span><h3>{selected.title}</h3><p>{selected.description}</p><div className="need-tags">{selected.needs.map((need) => <span key={need}>{need}</span>)}</div></div><div className="project-budget"><span>Инвестиции</span><strong>{formatMoney(selected.budget)}<small> млн ₽</small></strong><span>Событие {new Date(`${selected.date}T00:00:00`).toLocaleDateString('ru-RU')}</span><button className="text-action project-evaluate" onClick={() => onEstimate(selected)}>Оценить проект <ArrowRight size={14} /></button></div></div> : <div className="empty-state">Выберите проект в списке.</div>}
         </section>
       </div>
@@ -336,7 +354,7 @@ const objectFactors: Record<string, number> = { 'Складской компле
 const scaleFactors: Record<string, number> = { 'До 5 000 м²': 0.78, '5 000–20 000 м²': 1, 'Более 20 000 м²': 1.42 }
 const scaleValues: Record<string, number> = { 'До 5 000 м²': 4000, '5 000–20 000 м²': 12500, 'Более 20 000 м²': 25000 }
 
-function CalculatorModule({ selectedCompany, selectedProject }: { selectedCompany: Company | null; selectedProject: InvestProject | null }) {
+function CalculatorModule({ selectedCompany, selectedProject, companiesAreApi, projectsAreApi }: { selectedCompany: Company | null; selectedProject: InvestProject | null; companiesAreApi: boolean; projectsAreApi: boolean }) {
   const [objectType, setObjectType] = useState('Складской комплекс')
   const [scale, setScale] = useState('5 000–20 000 м²')
   const [duration, setDuration] = useState(3)
@@ -365,6 +383,10 @@ function CalculatorModule({ selectedCompany, selectedProject }: { selectedCompan
     ]),
     { name: 'Ваш проект', price: optimalPrice / 1_000_000 },
   ]
+  const benchmarkChartData = benchmarks.map((benchmark, index) => ({
+    ...benchmark,
+    axisLabel: benchmark.name === 'Ваш проект' ? 'Ваш проект' : `Аналог ${index + 1}`,
+  }))
   const similarBenchmarks = serverEstimate?.benchmarks ?? []
   const similarCount = serverEstimate ? similarBenchmarks.length : 4
   const similarMin = similarBenchmarks.length ? Math.min(...similarBenchmarks.map((deal) => deal.price)) : Math.round(total * 0.62)
@@ -375,15 +397,15 @@ function CalculatorModule({ selectedCompany, selectedProject }: { selectedCompan
     setServerEstimate(null)
     const urgency = duration < 3 ? 1.2 : duration > 8 ? 0.9 : 1
     calculateDeal({
-      ...(selectedCompany ? { company_id: selectedCompany.id } : {}),
-      ...(selectedProject ? { project_id: selectedProject.id } : {}),
+      ...(selectedCompany && companiesAreApi ? { company_id: selectedCompany.id } : {}),
+      ...(selectedProject && projectsAreApi ? { project_id: selectedProject.id } : {}),
       scale_param: scaleValues[scale],
       work_types: selectedEquipment,
       urgency_coeff: urgency,
       region_coeff: 1.05,
     }).then((estimate) => { if (current) setServerEstimate(estimate) })
     return () => { current = false }
-  }, [objectType, scale, duration, selectedEquipment, selectedCompany, selectedProject])
+  }, [objectType, scale, duration, selectedEquipment, selectedCompany, selectedProject, companiesAreApi, projectsAreApi])
 
   function toggleEquipment(id: string) {
     setSelectedEquipment((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])
@@ -392,8 +414,8 @@ function CalculatorModule({ selectedCompany, selectedProject }: { selectedCompan
   async function generateProposal() {
     setNotice('')
     const payload = {
-      ...(selectedCompany ? { company_id: selectedCompany.id } : {}),
-      ...(selectedProject ? { project_id: selectedProject.id } : {}),
+      ...(selectedCompany && companiesAreApi ? { company_id: selectedCompany.id } : {}),
+      ...(selectedProject && projectsAreApi ? { project_id: selectedProject.id } : {}),
       scale_param: scaleValues[scale],
       work_types: selectedEquipment,
       urgency_coeff: duration < 3 ? 1.2 : duration > 8 ? 0.9 : 1,
@@ -453,7 +475,7 @@ function CalculatorModule({ selectedCompany, selectedProject }: { selectedCompan
           <div className="price-cards"><article className="price-card"><span>Минимальная цена</span><strong>{formatMoney(minPrice)}<small>₽</small></strong><small>базовая комплектация</small></article><article className="price-card featured"><span>Рекомендуемая цена</span><strong>{formatMoney(optimalPrice)}<small>₽</small></strong><small><TrendingUp size={13} /> маржа {recommendedMargin}%</small></article></div>
           <div className="charts-row">
             <section className="chart-panel"><div className="chart-title"><strong>Структура сметы</strong><small>распределение себестоимости</small></div><div className="pie-area"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={costs} dataKey="value" nameKey="name" innerRadius={52} outerRadius={72} paddingAngle={3} stroke="none">{costs.map((item) => <Cell key={item.name} fill={item.color} />)}</Pie><Tooltip formatter={(value) => `${formatMoney(Number(value))} ₽`} /></PieChart></ResponsiveContainer><div className="pie-center"><span>СЕБЕСТОИМОСТЬ</span><strong>{formatMoney(costPrice)}</strong><small>₽</small></div></div><div className="chart-legend">{costs.map((item) => <span key={item.name}><i style={{ backgroundColor: item.color }} />{item.name}<small>{Math.round(item.value / costPrice * 100)}%</small></span>)}</div></section>
-            <section className="chart-panel benchmark-chart"><div className="chart-title"><strong>Сравнение с аналогами</strong><small>стоимость проекта, млн ₽</small></div><div className="bar-area"><ResponsiveContainer width="100%" height="100%"><BarChart data={benchmarks} margin={{ top: 8, right: 0, left: -24, bottom: 0 }}><CartesianGrid vertical={false} stroke="#ecebf1" /><XAxis dataKey="name" tick={{ fontSize: 9, fill: '#77798a' }} axisLine={false} tickLine={false} interval={0} /><YAxis tick={{ fontSize: 9, fill: '#77798a' }} axisLine={false} tickLine={false} /><Tooltip formatter={(value) => `${formatMoney(Number(value))} млн ₽`} /><Bar dataKey="price" radius={[4, 4, 0, 0]}>{benchmarks.map((item) => <Cell key={item.name} fill={item.name === 'Ваш проект' ? '#ff653f' : '#a58ad8'} />)}</Bar></BarChart></ResponsiveContainer></div></section>
+            <section className="chart-panel benchmark-chart"><div className="chart-title"><strong>Сравнение с аналогами</strong><small>стоимость проекта, млн ₽</small></div><div className="bar-area"><ResponsiveContainer width="100%" height="100%"><BarChart data={benchmarkChartData} margin={{ top: 8, right: 6, left: -20, bottom: 0 }}><CartesianGrid vertical={false} stroke="#ecebf1" /><XAxis dataKey="axisLabel" tick={{ fontSize: 9, fill: '#77798a' }} axisLine={false} tickLine={false} interval={0} /><YAxis tick={{ fontSize: 9, fill: '#77798a' }} axisLine={false} tickLine={false} /><Tooltip labelFormatter={(label) => benchmarkChartData.find((item) => item.axisLabel === label)?.name ?? label} formatter={(value) => `${formatMoney(Number(value))} млн ₽`} /><Bar dataKey="price" radius={[4, 4, 0, 0]}>{benchmarkChartData.map((item) => <Cell key={item.name} fill={item.name === 'Ваш проект' ? '#ff653f' : '#a58ad8'} />)}</Bar></BarChart></ResponsiveContainer></div></section>
           </div>
           <div className="estimate-bottom"><div className="similar-deals"><span className="similar-icon"><Building2 size={16} /></span><div><strong>{similarCount} похожие сделки</strong><small>{serverEstimate ? 'исторические сделки backend' : 'демо-аналоги'}</small></div><span className="similar-range">{formatMoney(similarMin)} – {formatMoney(similarMax)} ₽</span></div><button className="button button-primary proposal-button" onClick={generateProposal}><FileText size={16} /> Сформировать КП <ArrowRight size={16} /></button></div>
           {notice && <div className="notice" role="status">{notice}</div>}
@@ -469,25 +491,33 @@ export default function App() {
   const [companies, setCompanies] = useState(demoCompanies)
   const [projects, setProjects] = useState(demoProjects)
   const [source, setSource] = useState('DEMO-ДАННЫЕ')
+  const [companiesAreApi, setCompaniesAreApi] = useState(false)
+  const [projectsAreApi, setProjectsAreApi] = useState(false)
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
   const [selectedProject, setSelectedProject] = useState<InvestProject | null>(null)
-  const region = companies.some((company) => company.lat > 54 && company.lon > 35 && company.lon < 42)
-    ? 'Москва и Московская область'
-    : 'Ростовская область'
+  const region = 'Ростовская область'
 
   useEffect(() => {
     if (!token) {
       setCompanies(demoCompanies)
       setProjects(demoProjects)
+      setCompaniesAreApi(false)
+      setProjectsAreApi(false)
       setSource('DEMO-ДАННЫЕ')
       return
     }
     let activeRequest = true
     Promise.all([loadCompanies(), loadProjects()]).then(([companyResult, projectResult]) => {
       if (!activeRequest) return
-      setCompanies(companyResult.data)
-      setProjects(projectResult.data)
-      setSource(companyResult.source === 'api' && projectResult.source === 'api' ? 'API' : 'ДЕМО-ДАННЫЕ')
+      const regionalCompanies = companyResult.data.filter((company) => isInRostovRegion(company.lat, company.lon))
+      const regionalProjects = projectResult.data.filter((project) => isInRostovRegion(project.lat, project.lon))
+      const hasApiCompanies = companyResult.source === 'api' && regionalCompanies.length > 0
+      const hasApiProjects = projectResult.source === 'api' && regionalProjects.length > 0
+      setCompanies(hasApiCompanies ? regionalCompanies : demoCompanies)
+      setProjects(hasApiProjects ? regionalProjects : demoProjects)
+      setCompaniesAreApi(hasApiCompanies)
+      setProjectsAreApi(hasApiProjects)
+      setSource(hasApiCompanies && hasApiProjects ? 'API' : hasApiCompanies || hasApiProjects ? 'API + демо-регион' : 'ДЕМО-ДАННЫЕ')
     })
     return () => { activeRequest = false }
   }, [token])
@@ -510,10 +540,10 @@ export default function App() {
       <Header active={active} onChange={setActive} onLogout={logout} />
       <main className="workspace">
         <div className="workspace-topline"><span>{region.toLocaleUpperCase('ru-RU')} <i /> РЫНОК И ИНВЕСТИЦИИ</span><span><span className="sync-dot" />{source} · Данные обновлены 24 октября 2026</span></div>
-        {active === 'radar' && <Radar data={companies} region={region} onEstimate={(company) => { setSelectedCompany(company); setSelectedProject(null); setActive('calculator') }} />}
+        {active === 'radar' && <Radar data={companies} region={region} allowServerExport={companiesAreApi} onEstimate={(company) => { setSelectedCompany(company); setSelectedProject(null); setActive('calculator') }} />}
         {active === 'invest' && <Investment data={projects} region={region} onEstimate={(project) => { setSelectedProject(project); setSelectedCompany(null); setActive('calculator') }} />}
-        {active === 'calculator' && <CalculatorModule selectedCompany={selectedCompany} selectedProject={selectedProject} />}
-        <footer className="app-footer"><span>КОНТУР <span>·</span> {source}</span><span>{source === 'API' ? 'Реестры и расчёты загружаются из backend' : 'Данные синтетические и предназначены для демонстрации'}</span></footer>
+        {active === 'calculator' && <CalculatorModule selectedCompany={selectedCompany} selectedProject={selectedProject} companiesAreApi={companiesAreApi} projectsAreApi={projectsAreApi} />}
+        <footer className="app-footer"><span>КОНТУР <span>·</span> {source}</span><span>{source.includes('API') ? 'API подключен; на карте только данные Ростовской области' : 'Региональные данные синтетические и предназначены для демонстрации'}</span></footer>
       </main>
     </div>
   )
