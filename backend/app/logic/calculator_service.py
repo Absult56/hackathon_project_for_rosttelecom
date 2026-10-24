@@ -67,12 +67,19 @@ SCALE_CATEGORY_TO_SQM: Dict[str, float] = {
 
 REGION_COEFFS: Dict[str, float] = {
     "61": 1.00,  # Ростовская область
-    "23": 1.04,  # Краснодарский край
+    "23": 1.04,  # Краснodarский край
     "26": 1.02,  # Ставропольский край
     "34": 1.01,  # Волгоградская область
     "36": 1.00,  # Воронежская область
     "77": 1.22,  # Москва
     "78": 1.15,  # Санкт-Петербург
+}
+
+# Коэффициенты сложности по уровню сложности проекта
+DIFFICULTY_COEFFS: Dict[str, float] = {
+    "Basic": 1.0,
+    "Advanced": 1.3,
+    "Expert": 1.6,
 }
 
 
@@ -94,6 +101,7 @@ def compute_deal_estimate(
     scale: Optional[str] = None,
     duration_months: Optional[int] = None,
     region_code: Optional[str] = None,
+    difficulty: str = "Basic",
 ) -> Dict[str, Any]:
     """
     Универсальное математическое ядро расчета сметы и ценовой вилки Ростелекома.
@@ -158,20 +166,42 @@ def compute_deal_estimate(
     installation_cost = round(optimal_price * inst_ratio, 2)
     software_cost = round(optimal_price - equipment_cost - installation_cost, 2)
 
+    # 7. PIR/PNR/шеф-монтаж расчеты (на основе стоимости оборудования)
+    equipment_base = round(cost_price * eq_ratio, 2)  # Базовая стоимость оборудования
+    pir_percent = 10.0  # Планируемый интернет-ресурс (10%)
+    pnr_percent = 15.0  # Планируемые réseau-розетки (15%)
+    shef_montaz_percent = 5.0  # Шеф-монтаж (5%)
+    
+    pir_cost = round(equipment_base * pir_percent / 100, 2)
+    pnr_cost = round(equipment_base * pnr_percent / 100, 2)
+    shef_montaz_cost = round(equipment_base * shef_montaz_percent / 100, 2)
+
+    # Применение коэффициента сложности
+    difficulty_coeff = DIFFICULTY_COEFFS.get(difficulty, 1.0)
+    adjusted_cost_price = round(cost_price * difficulty_coeff, 2)
+    adjusted_optimal_price = round(optimal_price * difficulty_coeff, 2)
+    adjusted_margin_rub = round(adjusted_optimal_price - adjusted_cost_price, 2)
+    adjusted_margin_percent = round((adjusted_margin_rub / adjusted_optimal_price) * 100.0, 2) if adjusted_optimal_price > 0 else 25.93
+
     return {
-        "cost_price": round(cost_price, 2),
-        "min_price": min_price,
-        "optimal_price": optimal_price,
-        "margin_rub": margin_rub,
-        "margin_percent": margin_percent,
-        "recommended_margin_percent": margin_percent,
+        "cost_price": adjusted_cost_price,
+        "min_price": round(adjusted_cost_price * 1.15, 2),
+        "optimal_price": adjusted_optimal_price,
+        "margin_rub": adjusted_margin_rub,
+        "margin_percent": adjusted_margin_percent,
+        "recommended_margin_percent": adjusted_margin_percent,
         "cost_structure": {
             "equipment": equipment_cost,
             "installation": installation_cost,
             "software_licenses": software_cost,
+            "pir": pir_cost,
+            "pnr": pnr_cost,
+            "шеф-монтаж": shef_montaz_cost,
         },
         "effective_scale_sqm": resolve_scale_sqm(scale_param, scale),
         "target_industry_hint": OBJECT_TYPE_TO_INDUSTRY.get(object_type or "", ""),
+        "difficulty": difficulty,
+        "difficulty_coeff": difficulty_coeff,
     }
 
 
