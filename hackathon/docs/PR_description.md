@@ -82,7 +82,7 @@ python app/logic/data_generation.py
 ## Ограничения
 
 1. Ветка без общей истории с `main` — при мерже может потребоваться `--allow-unrelated-histories`.
-2. Эндпоинт `/calculator/calculate` возвращает 401 через TestClient из-за auth middleware.
-3. Загрузка компаний и проектов в БД требует доработки `seed_data.py`.
-4. Кластеры заданы вручную (без DBSCAN/K-Means) для интерпретируемости зон.
+2. Кластеры заданы вручную (без DBSCAN/K-Means) для интерпретируемости зон.
+
+> **Авторизация калькулятора:** эндпоинт `POST /calculator/calculate` сделан публичным (убрана зависимость `get_current_user`), так как калькулятор — инструмент предпродажной оценки, не требующий аутентификации. Остальные эндпоинты (`/api/auth/*`, `/api/radar/*`, `/api/invest/*`) по-прежнему защищены auth middleware без изменений.
 `api/calculator.py`, `schemas/calculator.py`, `services/calculator.py`, `models/*`, `core/database.py`, `main.py`.

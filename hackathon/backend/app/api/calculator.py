@@ -8,8 +8,6 @@ from app.models.company import Company
 from app.models.benchmark import BenchmarkDeal
 from app.schemas.calculator import CalculateRequest, CalculateResponse, BenchmarkDealOut, CostStructureOut
 from app.services.calculator import compute_deal_estimate, select_similar_benchmarks
-from app.core.security import get_current_user
-
 router = APIRouter(prefix="/calculator", tags=["Deal Calculator"])
 
 @router.post(
@@ -20,7 +18,6 @@ router = APIRouter(prefix="/calculator", tags=["Deal Calculator"])
 def calculate_deal(
     data: CalculateRequest,
     db: Session = Depends(get_db),
-    user: dict = Depends(get_current_user)
 ):
     target_industry = ""
 
@@ -87,6 +84,6 @@ def calculate_deal(
         margin_percent=calc_result["margin_percent"],
         recommended_margin_percent=calc_result["recommended_margin_percent"],
         cost_structure=CostStructureOut(**calc_result["cost_structure"]),
-        similar_deals_count=len(all_benchmarks) if all_benchmarks else 4,
+        similar_deals_count=len(similar_deals),
         benchmarks=benchmark_list
     )

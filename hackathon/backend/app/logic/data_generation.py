@@ -43,7 +43,7 @@ CLUSTER_ZONES_SPEC: List[Dict[str, Any]] = [
         "center_lon": 39.7185,
         "spread_lat": 0.011,
         "spread_lon": 0.022,
-        "client_prob": 0.42,
+        "client_prob": 0.50,
         "city": "г. Ростов-на-Дону",
         "streets": [
             "ул. Большая Садовая", "ул. Красноармейская", "пр-т Буденновский",
@@ -57,7 +57,7 @@ CLUSTER_ZONES_SPEC: List[Dict[str, Any]] = [
         "center_lon": 39.7140,
         "spread_lat": 0.016,
         "spread_lon": 0.024,
-        "client_prob": 0.38,
+        "client_prob": 0.48,
         "city": "г. Ростов-на-Дону",
         "streets": [
             "пр-т Космонавтов", "ул. Вавилова", "ул. Орбитальная",
@@ -71,7 +71,7 @@ CLUSTER_ZONES_SPEC: List[Dict[str, Any]] = [
         "center_lon": 39.6220,
         "spread_lat": 0.018,
         "spread_lon": 0.024,
-        "client_prob": 0.36,
+        "client_prob": 0.48,
         "city": "г. Ростов-на-Дону",
         "streets": [
             "ул. Малиновского", "ул. Доватора", "ул. Таганрогская",
@@ -85,7 +85,7 @@ CLUSTER_ZONES_SPEC: List[Dict[str, Any]] = [
         "center_lon": 39.7780,
         "spread_lat": 0.015,
         "spread_lon": 0.022,
-        "client_prob": 0.38,
+        "client_prob": 0.48,
         "city": "г. Ростов-на-Дону",
         "streets": [
             "пр-т Шолохова", "ул. Менжинского", "ул. Троллейбусная",
@@ -99,7 +99,7 @@ CLUSTER_ZONES_SPEC: List[Dict[str, Any]] = [
         "center_lon": 39.7150,
         "spread_lat": 0.010,
         "spread_lon": 0.020,
-        "client_prob": 0.35,
+        "client_prob": 0.46,
         "city": "г. Ростов-на-Дону",
         "streets": [
             "ул. 1-я Луговая", "ул. 2-я Луговая", "ул. Пойменная",

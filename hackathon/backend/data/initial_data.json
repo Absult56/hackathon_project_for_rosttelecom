@@ -221,7 +221,7 @@
       "lon": 39.63602,
       "address": "пр-т Стачки, д. 17, г. Ростов-на-Дону",
       "cluster_zone": "Запад",
-      "is_rtk_client": false,
+      "is_rtk_client": true,
       "is_white_spot": false
     },
     {
@@ -263,7 +263,7 @@
       "lon": 39.715307,
       "address": "ул. 2-я Луговая, д. 40, г. Ростов-на-Дону",
       "cluster_zone": "Юг",
-      "is_rtk_client": false,
+      "is_rtk_client": true,
       "is_white_spot": false
     },
     {
@@ -669,7 +669,7 @@
       "lon": 39.703398,
       "address": "ул. Особенная, д. 131, г. Ростов-на-Дону",
       "cluster_zone": "Север",
-      "is_rtk_client": false,
+      "is_rtk_client": true,
       "is_white_spot": false
     },
     {
@@ -781,7 +781,7 @@
       "lon": 39.758033,
       "address": "ул. 50-летия Ростсельмаша, д. 19, г. Ростов-на-Дону",
       "cluster_zone": "Восток",
-      "is_rtk_client": false,
+      "is_rtk_client": true,
       "is_white_spot": false
     },
     {
@@ -977,7 +977,7 @@
       "lon": 39.785456,
       "address": "ул. Вятская, д. 56, г. Ростов-на-Дону",
       "cluster_zone": "Восток",
-      "is_rtk_client": false,
+      "is_rtk_client": true,
       "is_white_spot": false
     },
     {
@@ -1411,7 +1411,7 @@
       "lon": 39.632397,
       "address": "ул. Пескова, д. 70, г. Ростов-на-Дону",
       "cluster_zone": "Запад",
-      "is_rtk_client": false,
+      "is_rtk_client": true,
       "is_white_spot": false
     },
     {
@@ -1551,7 +1551,7 @@
       "lon": 39.69684,
       "address": "ул. 1-я Луговая, д. 76, г. Ростов-на-Дону",
       "cluster_zone": "Юг",
-      "is_rtk_client": false,
+      "is_rtk_client": true,
       "is_white_spot": false
     },
     {
@@ -2055,7 +2055,7 @@
       "lon": 39.721773,
       "address": "ул. Королёва, д. 114, г. Ростов-на-Дону",
       "cluster_zone": "Север",
-      "is_rtk_client": false,
+      "is_rtk_client": true,
       "is_white_spot": false
     },
     {
@@ -2237,7 +2237,7 @@
       "lon": 39.776928,
       "address": "ул. Менжинского, д. 16, г. Ростов-на-Дону",
       "cluster_zone": "Восток",
-      "is_rtk_client": false,
+      "is_rtk_client": true,
       "is_white_spot": false
     },
     {
@@ -2587,7 +2587,7 @@
       "lon": 39.711105,
       "address": "ул. Большая Садовая, д. 95, г. Ростов-на-Дону",
       "cluster_zone": "Центр",
-      "is_rtk_client": false,
+      "is_rtk_client": true,
       "is_white_spot": false
     },
     {
@@ -2629,7 +2629,7 @@
       "lon": 39.723707,
       "address": "ул. 2-я Луговая, д. 114, г. Ростов-на-Дону",
       "cluster_zone": "Юг",
-      "is_rtk_client": false,
+      "is_rtk_client": true,
       "is_white_spot": false
     },
     {
@@ -3355,7 +3355,7 @@
       "final_price": 4500000.0
     }
   ],
-  "generated_at": "2026-10-24T15:44:27.389685Z",
+  "generated_at": "2026-10-24T16:26:18.030643Z",
   "total_companies": 200,
   "total_projects": 30,
   "total_benchmarks": 20,
