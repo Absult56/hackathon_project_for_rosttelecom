@@ -18,14 +18,13 @@ def generate_companies_csv(companies: List[Company]) -> bytes:
     # Заголовки (RFC-4180 совместимый формат для CRM)
     writer.writerow([
         "ID", "Название компании", "ИНН", "Отрасль",
-        "Выручка (руб)", "Рост (%)", "Клиент РТК", "Белое пятно", "Адрес", "Широта", "Долгота"
+            "Оценочная выручка (млн ₽)", "Рост (%)", "Белое пятно", "Адрес", "Широта", "Долгота"
     ])
 
     for c in companies:
         writer.writerow([
             c.id, c.name, c.inn, c.industry,
             c.revenue, c.revenue_growth,
-            "Да" if c.is_rtk_client else "Нет",
             "Да" if c.is_white_spot else "Нет",
             c.address, c.lat, c.lon
         ])
@@ -41,7 +40,7 @@ def generate_projects_csv(projects: List[InvestProject]) -> bytes:
 
     writer.writerow([
         "ID", "Название проекта", "Инвестор", "Отрасль",
-        "Стадия", "Бюджет (руб)", "Потребности ИТ", "Дата события", "Широта", "Долгота"
+        "Стадия", "Бюджет (млн ₽)", "Потребности ИТ", "Дата события", "Широта", "Долгота"
     ])
 
     for p in projects:

@@ -351,20 +351,6 @@
       "is_white_spot": false
     },
     {
-      "id": 26,
-      "name": "test",
-      "inn": "123",
-      "industry": "test",
-      "revenue": 100.0,
-      "revenue_growth": 0.0,
-      "lat": 0.0,
-      "lon": 0.0,
-      "address": "test",
-      "cluster_zone": "test",
-      "is_rtk_client": false,
-      "is_white_spot": false
-    },
-    {
       "id": 27,
       "name": "ООЛ «ГазПроект 27»",
       "inn": "6179000219",
