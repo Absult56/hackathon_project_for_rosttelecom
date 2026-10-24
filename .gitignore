@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.db
+*.sqlite
+.venv/
+venv/
+_check_white_spots.py
+check_stats.py
+AGENTS.md
+calc_examples.py
+FINAL_REPORT.md
+data.db
