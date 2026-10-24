@@ -1,79 +1,72 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Optional
+
+from app.core.database import get_db
+from app.models.company import Company
 from app.schemas.radar import CompanyOut, RadarAnalyticsOut
+from app.core.security import get_current_user
 
 router = APIRouter(prefix="/radar", tags=["Market Radar"])
 
-MOCK_COMPANIES = [
-    {
-        "id": 1,
-        "name": "ПАО Газпром Нефть Центр",
-        "inn": "7701234567",
-        "industry": "ТЭК",
-        "revenue": 1450000000.0,
-        "revenue_growth": 12.4,
-        "lat": 55.751244,
-        "lon": 37.618423,
-        "address": "г. Москва, ул. Тверская, д. 1",
-        "is_rtk_client": True,
-        "is_white_spot": False,
-        "cluster_zone": "ЦФО-1"
-    },
-    {
-        "id": 2,
-        "name": "Агрокомплекс Северный",
-        "inn": "7709876543",
-        "industry": "АПК",
-        "revenue": 450000000.0,
-        "revenue_growth": 25.1,
-        "lat": 55.820000,
-        "lon": 37.500000,
-        "address": "г. Москва, ш. Дмитровское, д. 120",
-        "is_rtk_client": False,
-        "is_white_spot": True,
-        "cluster_zone": "САО-Пром"
-    },
-    {
-        "id": 3,
-        "name": "Дата-Центр Инновация",
-        "inn": "7711223344",
-        "industry": "IT",
-        "revenue": 890000000.0,
-        "revenue_growth": 40.8,
-        "lat": 55.700000,
-        "lon": 37.600000,
-        "address": "г. Москва, Варшавское ш., д. 45",
-        "is_rtk_client": False,
-        "is_white_spot": True,
-        "cluster_zone": "ЮАО-IT"
-    }
-]
-
-@router.get("/companies", response_model=List[CompanyOut], summary="Получить список компаний для карты")
+@router.get(
+    "/companies",
+    response_model=List[CompanyOut],
+    summary="Реальный реестр компаний с фильтрами"
+)
 def get_companies(
-    industry: Optional[str] = Query(None, description="Отрасль: ТЭК, АПК, IT, Торговля"),
-    is_rtk_client: Optional[bool] = Query(None, description="Фильтр: True - клиенты, False - лиды"),
-    white_spot_only: bool = Query(False, description="Только белые пятна с потенциалом")
+    industry: Optional[str] = Query(None, description="Отрасль (ТЭК, АПК, IT и др.)"),
+    min_revenue: Optional[float] = Query(None, description="Минимальная выручка"),
+    max_revenue: Optional[float] = Query(None, description="Максимальная выручка"),
+    is_rtk_client: Optional[bool] = Query(None, description="Статус: True - клиент, False - лид"),
+    white_spot_only: bool = Query(False, description="Только потенциальные белые пятна"),
+    db: Session = Depends(get_db),
+    # Роут защищен JWT (при необходимости можно временно закомментировать для упрощения тестов фронта)
+    user: dict = Depends(get_current_user)
 ):
-    results = MOCK_COMPANIES
-    if industry:
-        results = [c for c in results if c["industry"].lower() == industry.lower()]
-    if is_rtk_client is not None:
-        results = [c for c in results if c["is_rtk_client"] == is_rtk_client]
-    if white_spot_only:
-        results = [c for c in results if c["is_white_spot"]]
-    return results
+    query = db.query(Company)
 
-@router.get("/analytics", response_model=RadarAnalyticsOut, summary="Аналитика для диаграмм")
-def get_radar_analytics():
-    return {
-        "total_companies": 3,
-        "rtk_clients_count": 1,
-        "white_spots_count": 2,
-        "penetration_rate": 33.3,
-        "revenue_by_industry": {
-            "ТЭК": 1450000000.0,
-            "АПК": 450000000.0,
-            "IT": 890000000.0
-        }
-    }
+    if industry:
+        query = query.filter(Company.industry.ilike(f"%{industry}%"))
+    if min_revenue is not None:
+        query = query.filter(Company.revenue >= min_revenue)
+    if max_revenue is not None:
+        query = query.filter(Company.revenue <= max_revenue)
+    if is_rtk_client is not None:
+        query = query.filter(Company.is_rtk_client == is_rtk_client)
+    if white_spot_only:
+        query = query.filter(Company.is_white_spot == True)
+
+    return query.all()
+
+@router.get(
+    "/analytics",
+    response_model=RadarAnalyticsOut,
+    summary="Агрегированные данные для графиков и дашбордов"
+)
+def get_radar_analytics(
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user)
+):
+    total_companies = db.query(Company).count()
+    rtk_clients_count = db.query(Company).filter(Company.is_rtk_client == True).count()
+    white_spots_count = db.query(Company).filter(Company.is_white_spot == True).count()
+
+    penetration_rate = round((rtk_clients_count / total_companies * 100), 2) if total_companies > 0 else 0.0
+
+    # Группировка выручки по отраслям
+    industry_stats = (
+        db.query(Company.industry, func.sum(Company.revenue))
+        .group_by(Company.industry)
+        .all()
+    )
+    revenue_by_industry = {industry: (rev or 0.0) for industry, rev in industry_stats}
+
+    return RadarAnalyticsOut(
+        total_companies=total_companies,
+        rtk_clients_count=rtk_clients_count,
+        white_spots_count=white_spots_count,
+        penetration_rate=penetration_rate,
+        revenue_by_industry=revenue_by_industry
+    )
