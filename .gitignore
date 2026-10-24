@@ -1,9 +1,12 @@
 # Python & Backend
 __pycache__/
 *.py[cod]
+*.pyo
 *$py.class
 venv/
+.venv/
 .env
+*.sqlite
 *.sqlite3
 *.db
 
@@ -19,6 +22,15 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
+# Data Engineer (Role 2) temp files
+_check_white_spots.py
+check_stats.py
+AGENTS.md
+calc_examples.py
+FINAL_REPORT.md
+data.db
+
+# Export
 leads_export.csv
 *.docx
 !kp_template.docx
