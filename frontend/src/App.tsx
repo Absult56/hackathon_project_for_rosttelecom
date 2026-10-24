@@ -1,0 +1,486 @@
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import * as L from 'leaflet'
+import { Document, HeadingLevel, Packer, Paragraph, TextRun } from 'docx'
+import {
+  ArrowDownToLine, ArrowRight, BadgeCheck, Building2, Calculator, CalendarDays,
+  Check, ChevronDown, CircleHelp, FileText, Filter, Layers3, LogOut, MapPin,
+  Search, ShieldCheck, SlidersHorizontal, TrendingDown, TrendingUp, Wallet,
+} from 'lucide-react'
+import {
+  Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer,
+  Tooltip, XAxis, YAxis,
+} from 'recharts'
+import MarkerClusterGroup from 'react-leaflet-cluster'
+import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
+import 'leaflet/dist/leaflet.css'
+import 'react-leaflet-cluster/lib/assets/MarkerCluster.css'
+import 'react-leaflet-cluster/lib/assets/MarkerCluster.Default.css'
+import 'leaflet.heat'
+import { companies as demoCompanies, formatMoney, industries, projects as demoProjects, type Company, type InvestProject } from './data'
+import { calculateDeal, exportCompaniesCsv, generateProposalDoc, loadCompanies, loadProjects, login2FA, type DealEstimate } from './services/api'
+
+type Module = 'radar' | 'invest' | 'calculator'
+type MapPoint = { id: number; name: string; lat: number; lon: number; color: string; detail: string; weight?: number }
+
+const initialToken = () => window.localStorage.getItem('rtk-demo-token')
+
+function MapViewport({ center }: { center: [number, number] }) {
+  const map = useMap()
+  useEffect(() => { map.flyTo(center, map.getZoom(), { duration: 0.55 }) }, [center, map])
+  return null
+}
+
+function HeatLayer({ points, enabled }: { points: MapPoint[]; enabled: boolean }) {
+  const map = useMap()
+  useEffect(() => {
+    if (!enabled || !points.length) return
+    const layer = L.heatLayer(points.map((point) => [point.lat, point.lon, Math.max(0.15, Math.min(1, (point.weight ?? 100) / 1000))]), {
+      radius: 30,
+      blur: 24,
+      maxZoom: 15,
+      gradient: { 0.25: '#38a68c', 0.55: '#ffbd55', 0.82: '#ff653f', 1: '#7028d8' },
+    }).addTo(map)
+    return () => { map.removeLayer(layer) }
+  }, [enabled, map, points])
+  return null
+}
+
+function GeoMap({ points, selectedId, center, onSelect, heatmap = false }: {
+  points: MapPoint[]; selectedId: number; center: [number, number]; onSelect: (id: number) => void; heatmap?: boolean
+}) {
+  return (
+    <MapContainer center={center} zoom={12} scrollWheelZoom className="leaflet-map">
+      <MapViewport center={center} />
+      <HeatLayer points={points} enabled={heatmap} />
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+      <MarkerClusterGroup
+        chunkedLoading
+        showCoverageOnHover={false}
+        maxClusterRadius={42}
+        iconCreateFunction={(cluster: { getChildCount: () => number }) => L.divIcon({
+          html: `<span>${cluster.getChildCount()}</span>`,
+          className: 'company-cluster',
+          iconSize: L.point(34, 34),
+        })}
+      >
+        {points.map((point) => (
+          <Marker
+            key={point.id}
+            position={[point.lat, point.lon]}
+            icon={L.divIcon({
+              html: `<span class="company-marker${point.id === selectedId ? ' selected' : ''}" style="--marker-color:${point.color}"></span>`,
+              className: 'company-marker-icon',
+              iconSize: [24, 24],
+              iconAnchor: [12, 12],
+            })}
+            eventHandlers={{ click: () => onSelect(point.id) }}
+          >
+            <Popup><strong>{point.name}</strong><br />{point.detail}</Popup>
+          </Marker>
+        ))}
+      </MarkerClusterGroup>
+    </MapContainer>
+  )
+}
+
+const modules: { id: Module; label: string; icon: typeof MapPin }[] = [
+  { id: 'radar', label: 'Радар присутствия', icon: MapPin },
+  { id: 'invest', label: 'Инвест-навигатор', icon: Layers3 },
+  { id: 'calculator', label: 'Калькулятор сделок', icon: Calculator },
+]
+
+function Brand() {
+  return <div className="brand-lockup"><span className="brand-mark"><span /></span><span className="brand-name">Ростелеком<small>коммерческая аналитика</small></span></div>
+}
+
+function Login({ onLogin }: { onLogin: (token: string) => void }) {
+  const [username, setUsername] = useState('admin')
+  const [password, setPassword] = useState('rtk_password')
+  const [otp, setOtp] = useState('123456')
+  const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSubmitting(true)
+    setError('')
+    try {
+      const token = await login2FA(username, password, otp)
+      window.localStorage.setItem('rtk-demo-token', token)
+      onLogin(token)
+    } catch {
+      setError('Проверьте логин, пароль и одноразовый код.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <main className="auth-page">
+      <section className="auth-panel">
+        <Brand />
+        <div className="auth-copy">
+          <span className="eyebrow"><span className="live-dot" /> ЕДИНЫЙ КОММЕРЧЕСКИЙ КОНТУР</span>
+          <h1>Видеть рынок.<br /><span>Действовать точнее.</span></h1>
+          <p>Геоаналитика, инвестиционные события и оценка проектов в одном рабочем пространстве.</p>
+        </div>
+        <form className="login-form" onSubmit={submit}>
+          <div className="form-heading"><div><span className="eyebrow">ЗАЩИЩЁННЫЙ ДОСТУП</span><h2>Войти в систему</h2></div><ShieldCheck size={22} /></div>
+          <label>Логин<input autoComplete="username" value={username} onChange={(event) => setUsername(event.target.value)} /></label>
+          <label>Пароль<input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+          <label>Код подтверждения <span className="label-aside">SMS · Telegram · TOTP</span><input inputMode="numeric" maxLength={6} value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, ''))} /></label>
+          {error && <p className="form-error" role="alert">{error}</p>}
+          <button className="button button-primary login-submit" type="submit" disabled={submitting}>{submitting ? 'Проверка…' : 'Подтвердить вход'} <ArrowRight size={17} /></button>
+          <p className="demo-note"><CircleHelp size={14} /> Демо-доступ: admin / rtk_password / 123456</p>
+        </form>
+        <div className="auth-foot"><span>Демо-контур · Ростовская область</span><span>Защищённая сессия <i /></span></div>
+      </section>
+      <aside className="auth-visual" aria-label="Геоаналитическая карта региона">
+        <div className="visual-grid" />
+        <div className="visual-top"><span>РЫНОК В ФОКУСЕ</span><span>47°13′ N&nbsp;&nbsp; 39°42′ E</span></div>
+        <div className="visual-orbit orbit-one" /><div className="visual-orbit orbit-two" />
+        <div className="visual-cross cross-one" /><div className="visual-cross cross-two" />
+        <div className="visual-map-label label-a"><span /> Ростов-на-Дону <small>18 компаний</small></div>
+        <div className="visual-map-label label-b"><span /> Аксай <small>6 возможностей</small></div>
+        <div className="visual-caption"><span>01 / 03</span><strong>Данные становятся<br />коммерческим преимуществом.</strong><small>Открытые источники · аналитика · действие</small></div>
+      </aside>
+    </main>
+  )
+}
+
+function Header({ active, onChange, onLogout }: { active: Module; onChange: (value: Module) => void; onLogout: () => void }) {
+  return (
+    <header className="app-header">
+      <Brand />
+      <nav className="module-tabs" aria-label="Модули">
+        {modules.map(({ id, label, icon: Icon }, index) => (
+          <button className={`module-tab ${active === id ? 'active' : ''}`} key={id} onClick={() => onChange(id)}>
+            <Icon size={17} strokeWidth={1.8} /><span>{label}</span><small>0{index + 1}</small>
+          </button>
+        ))}
+      </nav>
+      <div className="header-user"><span className="user-avatar">МС</span><div><strong>Мария Соколова</strong><small>Коммерческий блок</small></div><button className="icon-button logout-button" title="Выйти" aria-label="Выйти" onClick={onLogout}><LogOut size={17} /></button></div>
+    </header>
+  )
+}
+
+function PageHeading({ kicker, title, detail, action }: { kicker: string; title: string; detail: string; action?: ReactNode }) {
+  return <div className="page-heading"><div><span className="eyebrow">{kicker}</span><h1>{title}</h1><p>{detail}</p></div>{action}</div>
+}
+
+function Metric({ label, value, note, icon: Icon, accent = '' }: { label: string; value: string; note: string; icon: typeof Building2; accent?: string }) {
+  return <article className="metric"><span className={`metric-icon ${accent}`}><Icon size={17} /></span><div><span className="metric-label">{label}</span><strong>{value}</strong><small>{note}</small></div></article>
+}
+
+function CompanyCard({ company }: { company: Company }) {
+  return (
+    <section className="selection-card">
+      <div className="selection-top"><span className="eyebrow">ВЫБРАННАЯ КОМПАНИЯ</span><span className={`status-pill ${company.client ? 'client' : 'lead'}`}><i />{company.client ? 'Клиент' : 'Потенциал'}</span></div>
+      <h3>{company.name}</h3>
+      <span className="company-industry">{company.industry} <span>·</span> ИНН {company.inn}</span>
+      <div className="company-revenue"><span>Выручка за год</span><strong>{formatMoney(company.revenue)}<small> млн ₽</small></strong></div>
+      <div className={`growth ${company.growth < 0 ? 'negative' : ''}`}>{company.growth < 0 ? <TrendingDown size={15} /> : <TrendingUp size={15} />}{company.growth > 0 ? '+' : ''}{company.growth}% <span>динамика</span></div>
+      <div className="company-address"><MapPin size={14} />{company.address}</div>
+      <button className="text-action" onClick={() => { window.dispatchEvent(new CustomEvent('open-calculator')) }}>Оценить проект <ArrowRight size={15} /></button>
+    </section>
+  )
+}
+
+function Radar({ data }: { data: Company[] }) {
+  const [query, setQuery] = useState('')
+  const [industry, setIndustry] = useState('Все отрасли')
+  const [minRevenue, setMinRevenue] = useState(0)
+  const [onlyLeads, setOnlyLeads] = useState(false)
+  const [whiteSpots, setWhiteSpots] = useState(true)
+  const [heatmap, setHeatmap] = useState(true)
+  const [selectedId, setSelectedId] = useState(1)
+  const filtered = useMemo(() => data.filter((company) => {
+    const matchesQuery = `${company.name} ${company.inn}`.toLowerCase().includes(query.toLowerCase())
+    return matchesQuery && (industry === 'Все отрасли' || company.industry === industry) && company.revenue >= minRevenue && (!onlyLeads || !company.client)
+  }), [data, query, industry, minRevenue, onlyLeads])
+  const selected = filtered.find((company) => company.id === selectedId) ?? filtered[0]
+  const whiteSpotZones = useMemo(() => {
+    const totals = new Map<string, { revenue: number; clients: number }>()
+    data.forEach((company) => {
+      const zone = totals.get(company.zone) ?? { revenue: 0, clients: 0 }
+      zone.revenue += company.revenue
+      zone.clients += Number(company.client)
+      totals.set(company.zone, zone)
+    })
+    return new Set([...totals].filter(([, zone]) => zone.clients === 0 && zone.revenue >= 300).map(([name]) => name))
+  }, [data])
+  const points = filtered.map((company) => ({
+    id: company.id, name: company.name, lat: company.lat, lon: company.lon,
+    color: whiteSpots && whiteSpotZones.has(company.zone) ? '#ff5a36' : company.client ? '#6a24d9' : '#828a9b',
+    detail: company.industry,
+    weight: company.revenue,
+  }))
+  const potentialRevenue = filtered.filter((company) => !company.client).reduce((sum, company) => sum + company.revenue, 0)
+
+  async function exportCsv() {
+    const serverFile = await exportCompaniesCsv({
+      ...(industry !== 'Все отрасли' ? { industry } : {}),
+      min_revenue: minRevenue,
+      ...(query ? { search: query } : {}),
+      ...(onlyLeads ? { is_client: false } : {}),
+    })
+    const header = ['Название', 'ИНН', 'Отрасль', 'Выручка, млн руб.', 'Рост, %', 'Статус', 'Адрес']
+    const rows = filtered.map((company) => [company.name, company.inn, company.industry, company.revenue, company.growth, company.client ? 'Клиент' : 'Потенциал', company.address])
+    const csv = [header, ...rows].map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(';')).join('\n')
+    const url = URL.createObjectURL(serverFile ?? new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }))
+    const link = Object.assign(document.createElement('a'), { href: url, download: 'rtk-leads-export.csv' })
+    link.click()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
+  return (
+    <>
+      <PageHeading kicker="МОДУЛЬ 01 · РЫНОК И ПОКРЫТИЕ" title="Радар присутствия" detail="Найдите компании с потенциалом роста и оцените покрытие региона." action={<button className="button button-outline" onClick={exportCsv}><ArrowDownToLine size={16} /> Экспорт CSV <span className="button-count">{filtered.length}</span></button>} />
+      <div className="metric-row">
+        <Metric label="Компаний в выборке" value={String(filtered.length).padStart(2, '0')} note="в текущем срезе" icon={Building2} />
+        <Metric label="Потенциальная выручка" value={`${formatMoney(potentialRevenue)} млн`} note="у компаний без контракта" icon={Wallet} accent="orange" />
+        <Metric label="Белые пятна" value={String(whiteSpotZones.size).padStart(2, '0')} note="зоны высокой активности" icon={MapPin} accent="green" />
+        <Metric label="Динамика рынка" value="+14,8%" note="год к году · выборка" icon={TrendingUp} accent="blue" />
+      </div>
+      <div className="radar-layout">
+        <aside className="filter-panel">
+          <div className="panel-heading"><div><SlidersHorizontal size={17} /><strong>Фильтры</strong></div><button className="clear-button" onClick={() => { setQuery(''); setIndustry('Все отрасли'); setMinRevenue(0); setOnlyLeads(false) }}>Сбросить</button></div>
+          <label className="search-field"><Search size={16} /><input placeholder="Компания или ИНН" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
+          <label className="field-label">Отрасль<select value={industry} onChange={(event) => setIndustry(event.target.value)}><option>Все отрасли</option>{industries.map((item) => <option key={item}>{item}</option>)}</select><ChevronDown size={14} /></label>
+          <div className="range-label"><label htmlFor="revenue">Минимальная выручка</label><strong>{minRevenue} млн ₽</strong></div>
+          <input id="revenue" className="range-input" type="range" min="0" max="1000" step="25" value={minRevenue} onChange={(event) => setMinRevenue(Number(event.target.value))} />
+          <div className="range-scale"><span>0</span><span>1 млрд ₽</span></div>
+          <label className="check-row"><input type="checkbox" checked={onlyLeads} onChange={(event) => setOnlyLeads(event.target.checked)} /><span className="custom-check"><Check size={12} /></span><span>Только потенциальные</span></label>
+          <label className="check-row white-toggle"><input type="checkbox" checked={whiteSpots} onChange={(event) => setWhiteSpots(event.target.checked)} /><span className="custom-check"><Check size={12} /></span><span>Подсветить белые пятна</span><span className="orange-dot" /></label>
+          <label className="check-row heat-toggle"><input type="checkbox" checked={heatmap} onChange={(event) => setHeatmap(event.target.checked)} /><span className="custom-check"><Check size={12} /></span><span>Тепловой слой выручки</span><span className="heat-dot" /></label>
+          <div className="filter-foot"><Filter size={14} /> Обновлено сегодня, 09:42</div>
+        </aside>
+        <section className="map-panel">
+          <div className="map-head"><div><strong>Ростовская область</strong><span><span className="map-live" /> Демо-данные · {filtered.length} компаний</span></div><button className="map-expand" title="Карта интерактивна" aria-label="Интерактивная карта"><MapPin size={17} /></button></div>
+          <div className="map-canvas"><GeoMap points={points} selectedId={selected?.id ?? -1} center={selected ? [selected.lat, selected.lon] : [47.2225, 39.7187]} onSelect={setSelectedId} heatmap={heatmap} />
+            <div className="map-legend"><span><i className="legend-client" /> Клиенты</span><span><i className="legend-lead" /> Потенциал</span>{whiteSpots && <span><i className="legend-white" /> Белые пятна</span>}</div>
+            <div className="map-scale">OpenStreetMap</div>
+          </div>
+          <div className="map-foot"><span><BadgeCheck size={14} /> Зоны рассчитаны по плотности лидов и выручке</span><span>Схематичные демо-данные</span></div>
+        </section>
+        {selected ? <CompanyCard company={selected} /> : <div className="selection-card empty-selection"><Search size={22} /><strong>Ничего не найдено</strong><span>Измените фильтры, чтобы увидеть компании.</span></div>}
+      </div>
+      <div className="result-strip"><span>КОМПАНИИ В ЗОНЕ</span><div className="result-pills">{filtered.slice(0, 5).map((company) => <button key={company.id} className={company.id === selected?.id ? 'selected' : ''} onClick={() => setSelectedId(company.id)}><i className={company.client ? 'client-dot' : 'lead-dot'} />{company.name}</button>)}</div><span className="result-more">{filtered.length > 5 ? `+ ещё ${filtered.length - 5}` : 'Все результаты'}</span></div>
+    </>
+  )
+}
+
+function Investment({ data }: { data: InvestProject[] }) {
+  const [stage, setStage] = useState('Все стадии')
+  const [selectedId, setSelectedId] = useState(demoProjects[0].id)
+  const filtered = data.filter((project) => stage === 'Все стадии' || project.stage === stage)
+  const selected = filtered.find((project) => project.id === selectedId) ?? filtered[0]
+  const points = filtered.map((project) => ({ id: project.id, name: project.title, lat: project.lat, lon: project.lon, color: project.stage === 'Строительство' ? '#ff5a36' : project.stage === 'Запуск' ? '#6a24d9' : '#2a9a7b', detail: project.stage }))
+  return (
+    <>
+      <PageHeading kicker="МОДУЛЬ 02 · КАПИТАЛЬНЫЕ ВЛОЖЕНИЯ" title="Инвест-навигатор" detail="Будущие стройки и модернизации — новые точки входа в рынок." action={<label className="select-action"><CalendarDays size={16} /><select value={stage} onChange={(event) => setStage(event.target.value)}><option>Все стадии</option><option>Проектирование</option><option>Строительство</option><option>Запуск</option></select><ChevronDown size={14} /></label>} />
+      <div className="metric-row invest-metrics">
+        <Metric label="Активных проектов" value={String(filtered.length).padStart(2, '0')} note="в Ростовской области" icon={Layers3} />
+        <Metric label="Объём инвестиций" value={`${formatMoney(filtered.reduce((sum, item) => sum + item.budget, 0))} млн`} note="совокупный бюджет" icon={Wallet} accent="orange" />
+        <Metric label="Ближайшее событие" value={selected ? new Date(`${selected.date}T00:00:00`).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' }) : '—'} note={selected?.title ?? 'Нет событий'} icon={CalendarDays} accent="blue" />
+      </div>
+      <div className="invest-layout">
+        <section className="timeline-panel">
+          <div className="panel-heading"><div><CalendarDays size={17} /><strong>События и проекты</strong></div><span className="timeline-count">{filtered.length} объекта</span></div>
+          <div className="timeline-list">
+            {filtered.map((project) => (
+              <button key={project.id} className={`timeline-item ${selected?.id === project.id ? 'active' : ''}`} onClick={() => setSelectedId(project.id)}>
+                <span className={`timeline-marker ${project.stage === 'Строительство' ? 'stage-build' : project.stage === 'Запуск' ? 'stage-launch' : 'stage-plan'}`} />
+                <span className="timeline-date">{new Date(`${project.date}T00:00:00`).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                <strong>{project.title}</strong><span className="timeline-investor">{project.investor} · {project.industry}</span>
+                <span className={`stage-tag ${project.stage === 'Строительство' ? 'build' : project.stage === 'Запуск' ? 'launch' : 'plan'}`}>{project.stage}</span>
+              </button>
+            ))}
+            {!filtered.length && <div className="empty-state">На этой стадии проектов пока нет.</div>}
+          </div>
+          <div className="timeline-legend"><span><i className="stage-plan-dot" /> Проектирование</span><span><i className="stage-build-dot" /> Строительство</span><span><i className="stage-launch-dot" /> Запуск</span></div>
+        </section>
+        <section className="invest-map-panel">
+          <div className="map-head"><div><strong>Объекты региона</strong><span>Выберите событие для перехода к объекту</span></div><span className="map-live" /></div>
+          <div className="invest-map"><GeoMap points={points} selectedId={selected?.id ?? -1} center={selected ? [selected.lat, selected.lon] : [47.2225, 39.7187]} onSelect={setSelectedId} /></div>
+          {selected ? <div className="project-detail"><div><span className="eyebrow">{selected.investor} · {selected.stage.toUpperCase()}</span><h3>{selected.title}</h3><p>{selected.description}</p><div className="need-tags">{selected.needs.map((need) => <span key={need}>{need}</span>)}</div></div><div className="project-budget"><span>Инвестиции</span><strong>{formatMoney(selected.budget)}<small> млн ₽</small></strong><span>Событие {new Date(`${selected.date}T00:00:00`).toLocaleDateString('ru-RU')}</span></div></div> : <div className="empty-state">Выберите проект в списке.</div>}
+        </section>
+      </div>
+    </>
+  )
+}
+
+const equipmentOptions = [
+  { id: 'optics', label: 'Оптическая сеть', price: 520000 },
+  { id: 'wifi', label: 'Wi-Fi и локальная сеть', price: 340000 },
+  { id: 'cctv', label: 'Видеонаблюдение', price: 680000 },
+  { id: 'server', label: 'Серверная и СХД', price: 890000 },
+]
+const objectFactors: Record<string, number> = { 'Складской комплекс': 1.18, 'Производственная площадка': 1.35, 'Офисный центр': 0.92 }
+const scaleFactors: Record<string, number> = { 'До 5 000 м²': 0.78, '5 000–20 000 м²': 1, 'Более 20 000 м²': 1.42 }
+
+function CalculatorModule() {
+  const [objectType, setObjectType] = useState('Складской комплекс')
+  const [scale, setScale] = useState('5 000–20 000 м²')
+  const [duration, setDuration] = useState(3)
+  const [selectedEquipment, setSelectedEquipment] = useState(['optics', 'cctv', 'server'])
+  const [customer, setCustomer] = useState('')
+  const [notice, setNotice] = useState('')
+  const [serverEstimate, setServerEstimate] = useState<DealEstimate | null>(null)
+  const equipment = equipmentOptions.filter((item) => selectedEquipment.includes(item.id))
+  const equipmentCost = equipment.reduce((sum, item) => sum + item.price, 0)
+  const urgencyFactor = duration < 3 ? 1.18 : duration > 6 ? 0.96 : 1
+  const localTotal = Math.round((equipmentCost + 540000) * objectFactors[objectType] * scaleFactors[scale] * urgencyFactor)
+  const total = serverEstimate?.optimal_price ?? localTotal
+  const install = serverEstimate?.cost_structure.installation ?? Math.round(total * 0.29)
+  const licenses = serverEstimate?.cost_structure.software_licenses ?? Math.round(total * 0.17)
+  const equipmentTotal = serverEstimate?.cost_structure.equipment ?? total - install - licenses
+  const minPrice = serverEstimate?.min_price ?? Math.round(localTotal * 0.87 / 10000) * 10000
+  const optimalPrice = serverEstimate?.optimal_price ?? Math.round(localTotal * 1.12 / 10000) * 10000
+  const recommendedMargin = serverEstimate?.recommended_margin_percent ?? 24.5
+  const costs = [{ name: 'Оборудование', value: equipmentTotal, color: '#7028d8' }, { name: 'Монтаж', value: install, color: '#ff653f' }, { name: 'Лицензии', value: licenses, color: '#39a58c' }]
+  const benchmarks = [{ name: 'Малая площадка', price: Math.round(total * 0.62) }, { name: 'Аналог 01', price: Math.round(total * 0.91) }, { name: 'Ваш проект', price: optimalPrice }, { name: 'Аналог 02', price: Math.round(total * 1.07) }]
+
+  useEffect(() => {
+    let current = true
+    const objectCodes: Record<string, string> = { 'Складской комплекс': 'industrial_warehouse', 'Производственная площадка': 'industrial_facility', 'Офисный центр': 'office_center' }
+    const scaleCodes: Record<string, string> = { 'До 5 000 м²': 'small', '5 000–20 000 м²': 'medium', 'Более 20 000 м²': 'large' }
+    setServerEstimate(null)
+    calculateDeal({
+      object_type: objectCodes[objectType],
+      scale: scaleCodes[scale],
+      work_type: selectedEquipment,
+      duration_months: duration,
+      region_code: '61',
+    }).then((estimate) => { if (current) setServerEstimate(estimate) })
+    return () => { current = false }
+  }, [objectType, scale, duration, selectedEquipment])
+
+  function toggleEquipment(id: string) {
+    setSelectedEquipment((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])
+  }
+
+  async function generateProposal() {
+    setNotice('')
+    const payload = {
+      object_type: ({ 'Складской комплекс': 'industrial_warehouse', 'Производственная площадка': 'industrial_facility', 'Офисный центр': 'office_center' } as Record<string, string>)[objectType],
+      scale: ({ 'До 5 000 м²': 'small', '5 000–20 000 м²': 'medium', 'Более 20 000 м²': 'large' } as Record<string, string>)[scale],
+      work_type: selectedEquipment,
+      duration_months: duration,
+      region_code: '61',
+      customer_name: customer.trim(),
+      min_price: minPrice,
+      optimal_price: optimalPrice,
+      recommended_margin_percent: recommendedMargin,
+    }
+    const serverFile = await generateProposalDoc(payload)
+    if (serverFile) {
+      const url = URL.createObjectURL(serverFile)
+      const link = Object.assign(document.createElement('a'), { href: url, download: 'KP_Rostelecom_Deal.docx' })
+      link.click()
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+      setNotice('Коммерческое предложение сформировано.')
+      return
+    }
+    const doc = new Document({ sections: [{ children: [
+      new Paragraph({ text: 'РОСТЕЛЕКОМ', heading: HeadingLevel.HEADING_1 }),
+      new Paragraph({ text: 'Коммерческое предложение', heading: HeadingLevel.TITLE }),
+      new Paragraph({ children: [new TextRun({ text: `Заказчик: ${customer.trim() || 'Не указан'}`, bold: true })] }),
+      new Paragraph(`Объект: ${objectType}`),
+      new Paragraph(`Масштаб: ${scale}; срок реализации: ${duration} мес.`),
+      new Paragraph({ text: 'Состав предложения', heading: HeadingLevel.HEADING_2 }),
+      ...equipment.map((item) => new Paragraph({ text: `${item.label} — ${formatMoney(item.price)} руб.`, bullet: { level: 0 } })),
+      new Paragraph({ text: `Минимальная стоимость: ${formatMoney(minPrice)} руб.` }),
+      new Paragraph({ children: [new TextRun({ text: `Рекомендуемая стоимость: ${formatMoney(optimalPrice)} руб.`, bold: true })] }),
+      new Paragraph(`Рекомендуемая маржа: ${recommendedMargin}%.`),
+      new Paragraph({ children: [new TextRun({ text: 'Демо-документ сформирован для предварительной оценки.', italics: true })] }),
+    ] }] })
+    try {
+      const blob = await Packer.toBlob(doc)
+      const url = URL.createObjectURL(blob)
+      const link = Object.assign(document.createElement('a'), { href: url, download: 'KP_Rostelecom_Deal.docx' })
+      link.click()
+      URL.revokeObjectURL(url)
+      setNotice('Коммерческое предложение сформировано.')
+    } catch {
+      setNotice('Не удалось сформировать документ. Попробуйте ещё раз.')
+    }
+  }
+
+  return (
+    <>
+      <PageHeading kicker="МОДУЛЬ 03 · ПРЕДВАРИТЕЛЬНАЯ ОЦЕНКА" title="Калькулятор сделок" detail="Соберите спецификацию проекта и получите ценовой ориентир для КП." action={<span className="benchmark-badge"><span /> На основе демо-аналогов</span>} />
+      <div className="calculator-layout">
+        <section className="calculator-form panel">
+          <div className="panel-heading"><div><SlidersHorizontal size={17} /><strong>Параметры проекта</strong></div><span className="step-label">01 / 03</span></div>
+          <label className="input-group">Тип объекта<select value={objectType} onChange={(event) => setObjectType(event.target.value)}><option>Складской комплекс</option><option>Производственная площадка</option><option>Офисный центр</option></select><ChevronDown size={14} /></label>
+          <label className="input-group">Масштаб объекта<select value={scale} onChange={(event) => setScale(event.target.value)}><option>До 5 000 м²</option><option>5 000–20 000 м²</option><option>Более 20 000 м²</option></select><ChevronDown size={14} /></label>
+          <div className="range-label duration-label"><label htmlFor="duration">Срок реализации</label><strong>{duration} мес.</strong></div>
+          <input id="duration" className="range-input" type="range" min="1" max="12" value={duration} onChange={(event) => setDuration(Number(event.target.value))} />
+          <div className="range-scale"><span>1 мес.</span><span>12 мес.</span></div>
+          <div className="equipment-heading"><span>Состав работ и оборудования</span><small>{selectedEquipment.length} выбрано</small></div>
+          <div className="equipment-list">{equipmentOptions.map((item) => <label className="equipment-option" key={item.id}><input type="checkbox" checked={selectedEquipment.includes(item.id)} onChange={() => toggleEquipment(item.id)} /><span className="custom-check"><Check size={12} /></span><span>{item.label}</span><small>{formatMoney(item.price)} ₽</small></label>)}</div>
+          <label className="input-group customer-input">Название заказчика<input value={customer} onChange={(event) => setCustomer(event.target.value)} placeholder="Например, ООО «Вектор»" /></label>
+        </section>
+        <section className="estimate-column">
+          <div className="estimate-topline"><span>ОРИЕНТИР СТОИМОСТИ ПРОЕКТА</span><span className="live-calc"><i /> {serverEstimate ? 'Расчёт API' : 'Демо-расчёт'}</span></div>
+          <div className="price-cards"><article className="price-card"><span>Минимальная цена</span><strong>{formatMoney(minPrice)}<small>₽</small></strong><small>базовая комплектация</small></article><article className="price-card featured"><span>Рекомендуемая цена</span><strong>{formatMoney(optimalPrice)}<small>₽</small></strong><small><TrendingUp size={13} /> маржа {recommendedMargin}%</small></article></div>
+          <div className="charts-row">
+            <section className="chart-panel"><div className="chart-title"><strong>Структура сметы</strong><small>распределение затрат</small></div><div className="pie-area"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={costs} dataKey="value" nameKey="name" innerRadius={52} outerRadius={72} paddingAngle={3} stroke="none">{costs.map((item) => <Cell key={item.name} fill={item.color} />)}</Pie><Tooltip formatter={(value) => `${formatMoney(Number(value))} ₽`} /></PieChart></ResponsiveContainer><div className="pie-center"><span>ИТОГО</span><strong>{formatMoney(total)}</strong><small>₽</small></div></div><div className="chart-legend">{costs.map((item) => <span key={item.name}><i style={{ backgroundColor: item.color }} />{item.name}<small>{Math.round(item.value / total * 100)}%</small></span>)}</div></section>
+            <section className="chart-panel benchmark-chart"><div className="chart-title"><strong>Сравнение с аналогами</strong><small>стоимость проекта, млн ₽</small></div><div className="bar-area"><ResponsiveContainer width="100%" height="100%"><BarChart data={benchmarks} margin={{ top: 8, right: 0, left: -24, bottom: 0 }}><CartesianGrid vertical={false} stroke="#ecebf1" /><XAxis dataKey="name" tick={{ fontSize: 9, fill: '#77798a' }} axisLine={false} tickLine={false} interval={0} /><YAxis tick={{ fontSize: 9, fill: '#77798a' }} axisLine={false} tickLine={false} /><Tooltip formatter={(value) => `${formatMoney(Number(value))} ₽`} /><Bar dataKey="price" radius={[4, 4, 0, 0]}>{benchmarks.map((item) => <Cell key={item.name} fill={item.name === 'Ваш проект' ? '#ff653f' : '#a58ad8'} />)}</Bar></BarChart></ResponsiveContainer></div></section>
+          </div>
+          <div className="estimate-bottom"><div className="similar-deals"><span className="similar-icon"><Building2 size={16} /></span><div><strong>{serverEstimate?.similar_deals_count ?? 4} похожие сделки</strong><small>за последние 24 месяца</small></div><span className="similar-range">{formatMoney(Math.round(total * 0.62 / 10000) * 10000)} – {formatMoney(Math.round(total * 1.07 / 10000) * 10000)} ₽</span></div><button className="button button-primary proposal-button" onClick={generateProposal}><FileText size={16} /> Сформировать КП <ArrowRight size={16} /></button></div>
+          {notice && <div className="notice" role="status">{notice}</div>}
+        </section>
+      </div>
+    </>
+  )
+}
+
+export default function App() {
+  const [token, setToken] = useState(initialToken)
+  const [active, setActive] = useState<Module>('radar')
+  const [companies, setCompanies] = useState(demoCompanies)
+  const [projects, setProjects] = useState(demoProjects)
+  const [source, setSource] = useState('DEMO-ДАННЫЕ')
+
+  useEffect(() => {
+    let activeRequest = true
+    Promise.all([loadCompanies(), loadProjects()]).then(([companyResult, projectResult]) => {
+      if (!activeRequest) return
+      setCompanies(companyResult.data)
+      setProjects(projectResult.data)
+      setSource(companyResult.source === 'api' && projectResult.source === 'api' ? 'API' : 'ДЕМО-ДАННЫЕ')
+    })
+    return () => { activeRequest = false }
+  }, [])
+
+  useEffect(() => {
+    const openCalculator = () => setActive('calculator')
+    window.addEventListener('open-calculator', openCalculator)
+    return () => window.removeEventListener('open-calculator', openCalculator)
+  }, [])
+
+  if (!token) return <Login onLogin={setToken} />
+
+  function logout() {
+    window.localStorage.removeItem('rtk-demo-token')
+    setToken(null)
+  }
+
+  return (
+    <div className="app-shell">
+      <Header active={active} onChange={setActive} onLogout={logout} />
+      <main className="workspace">
+        <div className="workspace-topline"><span>РОСТОВСКАЯ ОБЛАСТЬ <i /> РЫНОК И ИНВЕСТИЦИИ</span><span><span className="sync-dot" />{source} · Данные обновлены 24 октября 2026</span></div>
+        {active === 'radar' && <Radar data={companies} />}
+        {active === 'invest' && <Investment data={projects} />}
+        {active === 'calculator' && <CalculatorModule />}
+        <footer className="app-footer"><span>КОНТУР <span>·</span> ДЕМО-ВЕРСИЯ</span><span>Данные синтетические и предназначены для демонстрации</span></footer>
+      </main>
+    </div>
+  )
+}

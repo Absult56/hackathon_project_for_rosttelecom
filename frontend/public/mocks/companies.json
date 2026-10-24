@@ -1,0 +1,15 @@
+[
+  {
+    "id": 1,
+    "name": "ООО «Донские элеваторы»",
+    "inn": "6164001122",
+    "industry": "АПК",
+    "revenue": 145.2,
+    "revenue_growth": 12.4,
+    "lat": 47.2225,
+    "lon": 39.7187,
+    "address": "Ростов-на-Дону, ул. Береговая, 8",
+    "is_rtk_client": false,
+    "white_spot": true
+  }
+]
