@@ -9,6 +9,7 @@ export type Company = {
   lon: number
   address: string
   client: boolean
+  whiteSpot?: boolean
   zone: string
 }
 
@@ -26,7 +27,7 @@ export type InvestProject = {
   description: string
 }
 
-export const industries = ['АПК', 'Торговля', 'Производство', 'ТЭК', 'IT']
+export const industries = ['АПК', 'Торговля', 'Производство', 'ТЭК', 'IT', 'Логистика', 'Финансы']
 
 const initialCompanies: Company[] = [
   { id: 1, name: 'Донские элеваторы', inn: '6164001122', industry: 'АПК', revenue: 145.2, growth: 12.4, lat: 47.2225, lon: 39.7187, address: 'Ростов-на-Дону, ул. Береговая, 8', client: false, zone: 'Центр' },
@@ -64,6 +65,7 @@ const generatedCompanies: Company[] = Array.from({ length: 96 }, (_, index) => {
     lon: 39.57 + (Math.floor(index / 15) % 12) * 0.026,
     address: `Ростовская область, демо-адрес ${index + 1}`,
     client: !['Батайск', 'Новый Аксай'].includes(zone) && index % 7 === 0,
+    whiteSpot: ['Батайск', 'Новый Аксай'].includes(zone),
     zone,
   }
 })
