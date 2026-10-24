@@ -1,13 +1,36 @@
+# Python & Backend
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
-*.db
-*.sqlite
-.venv/
+*$py.class
 venv/
+.venv/
+.env
+*.sqlite
+*.sqlite3
+*.db
+
+# Node & Frontend
+node_modules/
+dist/
+.vite/
+npm-debug.log*
+
+# IDE & OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Data Engineer (Role 2) temp files
 _check_white_spots.py
 check_stats.py
 AGENTS.md
 calc_examples.py
 FINAL_REPORT.md
 data.db
+
+# Export
+leads_export.csv
+*.docx
+!kp_template.docx

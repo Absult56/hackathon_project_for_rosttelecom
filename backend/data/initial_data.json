@@ -1,0 +1,69 @@
+{
+  "companies": [
+    {
+      "name": "ПАО Газпром Нефть Регион",
+      "inn": "7701234567",
+      "industry": "ТЭК",
+      "revenue": 1450000000.0,
+      "revenue_growth": 12.4,
+      "lat": 55.751244,
+      "lon": 37.618423,
+      "address": "г. Москва, ул. Тверская, д. 1",
+      "is_rtk_client": true,
+      "is_white_spot": false,
+      "cluster_zone": "ЦФО-1"
+    },
+    {
+      "name": "Агрокомплекс Северный",
+      "inn": "7709876543",
+      "industry": "АПК",
+      "revenue": 450000000.0,
+      "revenue_growth": 25.1,
+      "lat": 55.820000,
+      "lon": 37.500000,
+      "address": "г. Москва, ш. Дмитровское, д. 120",
+      "is_rtk_client": false,
+      "is_white_spot": true,
+      "cluster_zone": "САО-Пром"
+    },
+    {
+      "name": "ТехноПарк IT Системы",
+      "inn": "7711223344",
+      "industry": "IT",
+      "revenue": 890000000.0,
+      "revenue_growth": 40.8,
+      "lat": 55.700000,
+      "lon": 37.600000,
+      "address": "г. Москва, Варшавское ш., д. 45",
+      "is_rtk_client": false,
+      "is_white_spot": true,
+      "cluster_zone": "ЮАО-IT"
+    }
+  ],
+  "projects": [
+    {
+      "title": "Строительство логистического технопарка 'Запад'",
+      "investor": "ЛогоПром Инвест",
+      "industry": "Логистика",
+      "stage": "стройка",
+      "budget": 2500000000.0,
+      "lat": 55.680000,
+      "lon": 37.350000,
+      "target_needs": "fiber_optics,cctv,data_center",
+      "event_date": "2025-06-30",
+      "description": "Крупный хаб класса А, требуется 10 км ВОЛС и 120 камер видеонаблюдения."
+    },
+    {
+      "title": "Модернизация элеватора и создание ЦОД",
+      "investor": "АгроСевер Холдинг",
+      "industry": "АПК",
+      "stage": "проектирование",
+      "budget": 850000000.0,
+      "lat": 55.910000,
+      "lon": 37.580000,
+      "target_needs": "fiber_optics,access_control,data_center",
+      "event_date": "2025-09-15",
+      "description": "Автоматизация и интеграция цифровых сервисов РТК."
+    }
+  ]
+}
