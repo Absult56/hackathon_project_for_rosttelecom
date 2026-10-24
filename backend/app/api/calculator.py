@@ -85,5 +85,7 @@ def calculate_deal(
         recommended_margin_percent=calc_result["recommended_margin_percent"],
         cost_structure=CostStructureOut(**calc_result["cost_structure"]),
         similar_deals_count=len(similar_deals),
-        benchmarks=benchmark_list
+        benchmarks=benchmark_list,
+        difficulty=calc_result.get("difficulty", "medium"),
+        difficulty_coeff=calc_result.get("difficulty_coeff", 1.0),
     )

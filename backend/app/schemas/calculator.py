@@ -24,6 +24,9 @@ class CostStructureOut(BaseModel):
     equipment: float
     installation: float
     software_licenses: float
+    pir: float
+    pnr: float
+    shef_montazh: float
 
 class CalculateResponse(BaseModel):
     cost_price: float
@@ -35,3 +38,5 @@ class CalculateResponse(BaseModel):
     cost_structure: CostStructureOut
     similar_deals_count: int
     benchmarks: List[BenchmarkDealOut]
+    difficulty: str
+    difficulty_coeff: float
