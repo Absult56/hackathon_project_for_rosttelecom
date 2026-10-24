@@ -196,7 +196,7 @@ def compute_deal_estimate(
             "software_licenses": software_cost,
             "pir": pir_cost,
             "pnr": pnr_cost,
-            "шеф-монтаж": shef_montaz_cost,
+            "shef_montazh": shef_montaz_cost,
         },
         "effective_scale_sqm": resolve_scale_sqm(scale_param, scale),
         "target_industry_hint": OBJECT_TYPE_TO_INDUSTRY.get(object_type or "", ""),
