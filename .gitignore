@@ -1,0 +1,20 @@
+# Python & Backend
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+*.sqlite3
+*.db
+
+# Node & Frontend
+node_modules/
+dist/
+.vite/
+npm-debug.log*
+
+# IDE & OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
