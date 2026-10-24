@@ -19,7 +19,7 @@ def seed_database(db: Session):
         return
 
     print("[*] Загрузка фикстур в БД...")
-    with open(DATA_FILE_PATH, "r", encoding="utf-8") as f:
+    with open(DATA_FILE_PATH, "r", encoding="utf-8-sig") as f:
         payload = json.load(f)
 
     # 1. Загрузка компаний
