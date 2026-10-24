@@ -759,60 +759,310 @@
   ],
   "projects": [
     {
-      "id": 51,
-      "title": "Модернизация теплосети",
+      "id": 1,
+      "title": "Модернизация теплосети г. Ростов",
       "industry": "ТЭК",
       "scale": 1500000,
       "base_cost": 25000000,
       "margin_percent": 22,
       "status": "planning",
-      "description": "Проект"
+      "description": "Проект по обновлению тепловых сетей"
     },
     {
-      "id": 52,
+      "id": 2,
       "title": "Строительство логистического центра",
       "industry": "Логистика",
       "scale": 800000,
       "base_cost": 15000000,
       "margin_percent": 18,
       "status": "planning",
-      "description": "Проект"
+      "description": "Проект по построению центра распределения"
     },
     {
-      "id": 53,
-      "title": "Автоматизация производства",
+      "id": 3,
+      "title": "Автоматизация производственного цеха",
       "industry": "Производство",
       "scale": 500000,
       "base_cost": 10000000,
       "margin_percent": 25,
       "status": "approval",
-      "description": "Проект"
+      "description": "Проект по внедрению робототехники"
     },
     {
-      "id": 54,
+      "id": 4,
       "title": "Расширение торгового центра",
       "industry": "Торговля",
       "scale": 2000000,
       "base_cost": 35000000,
       "margin_percent": 20,
       "status": "planning",
-      "description": "Проект"
+      "description": "Проект по увеличения торговых площадей"
     },
     {
-      "id": 55,
-      "title": "Умный транспорт",
+      "id": 5,
+      "title": "Умный транспорт и маршрутизация",
       "industry": "ТЭК",
       "scale": 3000000,
       "base_cost": 50000000,
       "margin_percent": 23,
       "status": "research",
-      "description": "Проект"
+      "description": "Проект по оптимизации транспортных маршрутов"
+    },
+    {
+      "id": 6,
+      "title": "Ремонт газовой трубопроводной сети",
+      "industry": "Газ",
+      "scale": 1200000,
+      "base_cost": 20000000,
+      "margin_percent": 15,
+      "status": "planning",
+      "description": "Проект по восстановлению газопроводов"
+    },
+    {
+      "id": 7,
+      "title": "Строительство нового цеха",
+      "industry": "Строй",
+      "scale": 2500000,
+      "base_cost": 40000000,
+      "margin_percent": 19,
+      "status": "planning",
+      "description": "Проект по строительству нового производственного здания"
+    },
+    {
+      "id": 8,
+      "title": "Апгрейд энергоснабжения промышленного предприятия",
+      "industry": "ТЭК",
+      "scale": 1800000,
+      "base_cost": 30000000,
+      "margin_percent": 21,
+      "status": "approval",
+      "description": "Проект поmodernization of power supply"
+    },
+    {
+      "id": 9,
+      "title": "Логистический хаб на юге региона",
+      "industry": "Логистика",
+      "scale": 950000,
+      "base_cost": 16500000,
+      "margin_percent": 17,
+      "status": "planning",
+      "description": "Проект по построению логистического хаба"
+    },
+    {
+      "id": 10,
+      "title": "Производство экологического оборудования",
+      "industry": "Производство",
+      "scale": 650000,
+      "base_cost": 12000000,
+      "margin_percent": 24,
+      "status": "approval",
+      "description": "Проект по производству экотехники"
+    },
+    {
+      "id": 11,
+      "title": "Реновация газовой инфраструктуры",
+      "industry": "Газ",
+      "scale": 1100000,
+      "base_cost": 18500000,
+      "margin_percent": 16,
+      "status": "planning",
+      "description": "Проект по обновлению газового оборудования"
+    },
+    {
+      "id": 12,
+      "title": "Торгово-развлекательный комплекс",
+      "industry": "Торговля",
+      "scale": 3200000,
+      "base_cost": 45000000,
+      "margin_percent": 22,
+      "status": "planning",
+      "description": "Проект по построению ТРЦ"
+    },
+    {
+      "id": 13,
+      "title": "Система управления энергией предприятия",
+      "industry": "ТЭК",
+      "scale": 750000,
+      "base_cost": 15000000,
+      "margin_percent": 20,
+      "status": "research",
+      "description": "Проект по внедрению SMЕ"
+    },
+    {
+      "id": 14,
+      "title": "Стратегическое хранилище сырья",
+      "industry": "Логистика",
+      "scale": 850000,
+      "base_cost": 14000000,
+      "margin_percent": 18,
+      "status": "planning",
+      "description": "Проект по строительству склада"
+    },
+    {
+      "id": 15,
+      "title": "Модернизация покоящегося фонда",
+      "industry": "Строй",
+      "scale": 2200000,
+      "base_cost": 38000000,
+      "margin_percent": 21,
+      "status": "approval",
+      "description": "Проект по ремонту иmodernization"
+    },
+    {
+      "id": 16,
+      "title": "Проект по водоподготовке",
+      "industry": "Химия",
+      "scale": 550000,
+      "base_cost": 9500000,
+      "margin_percent": 26,
+      "status": "research",
+      "description": "Проект по очистке и водоподготовке"
+    },
+    {
+      "id": 17,
+      "title": "Автоматизация счетного учета",
+      "industry": "IT",
+      "scale": 450000,
+      "base_cost": 8000000,
+      "margin_percent": 30,
+      "status": "planning",
+      "description": "Проект по внедрению ERP-системы"
+    },
+    {
+      "id": 18,
+      "title": "Расширение газового compression-участка",
+      "industry": "Газ",
+      "scale": 1600000,
+      "base_cost": 28000000,
+      "margin_percent": 19,
+      "status": "planning",
+      "description": "Проект по расширению compression-участок"
+    },
+    {
+      "id": 19,
+      "title": "Производство солнечных панелей",
+      "industry": "ТЭК",
+      "scale": 3500000,
+      "base_cost": 55000000,
+      "margin_percent": 23,
+      "status": "planning",
+      "description": "Проект по строительству pv-пп"
+    },
+    {
+      "id": 20,
+      "title": "Центр диагностики и лечения",
+      "industry": "Медицина",
+      "scale": 700000,
+      "base_cost": 11000000,
+      "margin_percent": 28,
+      "status": "approval",
+      "description": "Проект по строительству медицинского центра"
+    },
+    {
+      "id": 21,
+      "title": "Линия по упаковке продукции",
+      "industry": "Производство",
+      "scale": 600000,
+      "base_cost": 10500000,
+      "margin_percent": 25,
+      "status": "planning",
+      "description": "Проект по автоматизации упаковки"
+    },
+    {
+      "id": 22,
+      "title": "Стратегический деплот логистики",
+      "industry": "Логистика",
+      "scale": 900000,
+      "base_cost": 15500000,
+      "margin_percent": 17,
+      "status": "research",
+      "description": "Проект по оптимизации цепочек поставок"
+    },
+    {
+      "id": 23,
+      "title": "Реновация высвобожденных площадей",
+      "industry": "Строй",
+      "scale": 2100000,
+      "base_cost": 36000000,
+      "margin_percent": 20,
+      "status": "planning",
+      "description": "Проект по редеву зданий"
+    },
+    {
+      "id": 24,
+      "title": "Проект по выбросовому газификации",
+      "industry": "Химия",
+      "scale": 800000,
+      "base_cost": 13500000,
+      "margin_percent": 22,
+      "status": "approval",
+      "description": "Проект по очистке выбросов"
+    },
+    {
+      "id": 25,
+      "title": "Цифр twins для производственного цеха",
+      "industry": "IT",
+      "scale": 550000,
+      "base_cost": 9500000,
+      "margin_percent": 29,
+      "status": "research",
+      "description": "Проект по Digital Twins"
+    },
+    {
+      "id": 26,
+      "title": "Модернизация насосного устройства",
+      "industry": "ТЭК",
+      "scale": 1400000,
+      "base_cost": 24000000,
+      "margin_percent": 21,
+      "status": "planning",
+      "description": "Проект по обновлению уздов"
+    },
+    {
+      "id": 27,
+      "title": "Центр сортировки грузов",
+      "industry": "Логистика",
+      "scale": 880000,
+      "base_cost": 14800000,
+      "margin_percent": 18,
+      "status": "planning",
+      "description": "Проект по построению сортировочного центра"
+    },
+    {
+      "id": 28,
+      "title": "Проект по газоочистному оборудованию",
+      "industry": "Химия",
+      "scale": 620000,
+      "base_cost": 11000000,
+      "margin_percent": 24,
+      "status": "research",
+      "description": "Проект по газоочистке"
+    },
+    {
+      "id": 29,
+      "title": "Автоматизация складских операций",
+      "industry": "Логистика",
+      "scale": 580000,
+      "base_cost": 9800000,
+      "margin_percent": 27,
+      "status": "approval",
+      "description": "Проект по wms-автоматизации"
+    },
+    {
+      "id": 30,
+      "title": "Ростовская энергетическая модернизация",
+      "industry": "ТЭК",
+      "scale": 2000000,
+      "base_cost": 35000000,
+      "margin_percent": 22,
+      "status": "planning",
+      "description": "Главный проект по энергетическому сектору"
     }
   ],
   "white_spot_zones": [
-    "Центральный",
-    "Северо-Западный",
-    "Ярославль-1",
-    "Ярославль-2"
+    "Порт",
+    "Батайск",
+    "Новый Аксай",
+    "Таганрог-Пром"
   ]
 }
