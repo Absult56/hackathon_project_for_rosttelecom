@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import auth, radar, invest, calculator
 from app.core.database import Base, engine, SessionLocal
 from app.core.seed_data import seed_database
+from app.api import export
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -38,6 +39,8 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(radar.router, prefix="/api")
 app.include_router(invest.router, prefix="/api")
 app.include_router(calculator.router, prefix="/api")
+app.include_router(export.router, prefix="/api")
+
 
 @app.get("/", tags=["Healthcheck"])
 def root():
