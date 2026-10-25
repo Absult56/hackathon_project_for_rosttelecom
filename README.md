@@ -89,7 +89,10 @@ npm run dev
 | `📄 parse_excel.py`       | Скрипт обработки и парсинга данных из Excel             |
 
 ---
-
+<img width="1363" height="668" alt="Image" src="https://github.com/user-attachments/assets/40771fde-496a-4063-a6d4-58afebc64e95" />
+<img width="666" height="424" alt="Image" src="https://github.com/user-attachments/assets/2f769a12-a4e9-443e-be2e-7bb48aa0783e" />
+<img width="1054" height="576" alt="Image" src="https://github.com/user-attachments/assets/ca0d1230-9a78-48a6-9cf7-d4fe79015884" />
+<img width="1093" height="576" alt="Image" src="https://github.com/user-attachments/assets/61739989-720a-4072-83d7-0950e677430d" />
 <div align="center">
 
 **Разработано командой «Матрица» для хакатона ДГТУ-26**
